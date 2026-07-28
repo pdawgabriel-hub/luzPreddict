@@ -1,0 +1,23 @@
+# Entorno Virtual
+venv/
+env/
+.venv/
+
+# Python / Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Datos pesados/locales (conservamos solo las carpetas)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Checkpoints de Jupyter
+.ipynb_checkpoints/
+
+# Configuración local / Secretos
+.env
+.DS_Store
