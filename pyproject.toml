@@ -3,6 +3,8 @@ name = "luzpreddict"
 version = "0.1.0"
 description = "Predicción del precio horario de la luz (PVPC) para el día siguiente"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
