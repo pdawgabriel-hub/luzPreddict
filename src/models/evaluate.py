@@ -10,13 +10,10 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
-from src.processing.features import build_features
+from src.processing.features import HISTORY_DAYS, build_features, features_for_day
 from src.utils.calendar import local_day_hours
 
 METRICS = ["mae", "rmse", "bias", "n"]
-
-# Días de historia para calcular las variables de un día (la más larga mira 7 días atrás)
-HISTORY_DAYS_FOR_FEATURES = 10
 
 
 def regression_metrics(y_true: pd.Series, y_pred: pd.Series) -> dict[str, float]:
@@ -64,7 +61,7 @@ def backtest(
     start: date,
     end: date,
     refit_every_days: int | None = None,
-    history_days: int = HISTORY_DAYS_FOR_FEATURES,
+    history_days: int = HISTORY_DAYS,
 ) -> pd.DataFrame:
     """Simula la previsión diaria entre `start` y `end` (días locales, incluidos).
 
@@ -87,9 +84,7 @@ def backtest(
             forecaster.fit(build_features(known))
             days_since_fit = 0
 
-        window = known.loc[known.index >= day_hours[0] - pd.Timedelta(days=history_days)]
-        to_predict = pd.concat([window, pd.DataFrame({"price": np.nan}, index=day_hours)])
-        features = build_features(to_predict).loc[day_hours]
+        features = features_for_day(prices, day, history_days)
 
         results.append(
             pd.DataFrame(

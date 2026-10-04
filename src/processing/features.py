@@ -9,10 +9,12 @@ días"), no contando filas: con `shift(24)` la última hora de un día de 25 hor
 apuntaría a la primera hora del propio día, que todavía no se conoce.
 """
 
+from datetime import date
+
 import numpy as np
 import pandas as pd
 
-from src.utils.calendar import market_timezone, national_holidays, tariff_holidays
+from src.utils.calendar import local_day_hours, market_timezone, national_holidays, tariff_holidays
 
 TARGET = "price"
 LAG_DAYS = (1, 2, 3, 7)
@@ -31,6 +33,9 @@ FEATURES = CALENDAR_FEATURES + PRICE_FEATURES
 
 # Códigos de `tariff_period` (de más barato a más caro)
 TARIFF_PERIOD_CODES = {"valle": 0, "llano": 1, "punta": 2}
+
+# Días de historia que bastan para calcular las variables de un día (la más larga mira 7 días atrás)
+HISTORY_DAYS = 10
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -110,3 +115,16 @@ def _price_features(
         }
     )
     return pd.DataFrame(features, index=index)
+
+
+def features_for_day(prices: pd.DataFrame, day: date, history_days: int = HISTORY_DAYS) -> pd.DataFrame:
+    """Variables de las horas del día local `day` usando solo precios anteriores a ese día.
+
+    Es lo que se conoce al predecir `day`: las horas de ese día entran con el
+    precio vacío, aunque `prices` lo tenga. Lo usan el backtest y la previsión.
+    """
+    day_hours = pd.DatetimeIndex(local_day_hours(day), name="datetime")
+    first_hour = day_hours[0]
+    known = prices.loc[(prices.index < first_hour) & (prices.index >= first_hour - pd.Timedelta(days=history_days))]
+    frame = pd.concat([known[[TARGET]], pd.DataFrame({TARGET: np.nan}, index=day_hours)])
+    return build_features(frame).loc[day_hours]

@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test backfill backtest train clean
+.PHONY: help install lint format test backfill backtest train predict clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -30,6 +30,9 @@ backtest: ## Compara LightGBM con las referencias en el periodo de prueba (desde
 
 train: ## Entrena LightGBM con todos los datos y lo guarda en models/ con sus métricas
 	$(PYTHON) -m src.models.train fit
+
+predict: ## Previsión del PVPC del primer día sin precio publicado
+	$(PYTHON) -m src.models.predict
 
 clean: ## Borra cachés de Python, pytest y ruff
 	find . -path ./venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
