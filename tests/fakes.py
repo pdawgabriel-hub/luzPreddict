@@ -1,10 +1,12 @@
 """Dobles de prueba compartidos por varios tests."""
 
-from datetime import timedelta
+from datetime import date, timedelta
+
+import pandas as pd
 
 from src.ingestion import generation, prices
 from src.ingestion.ree_client import ReePoint
-from src.utils.calendar import local_day_hours
+from src.utils.calendar import local_day_hours, market_timezone
 
 
 class FakeClient:
@@ -43,3 +45,22 @@ class FakeGenerationClient:
             series[generation.TOTAL_SERIES].append(ReePoint(midnight, sum(self.mwh.values())))
             day += timedelta(days=1)
         return series
+
+
+# --- Series de precios de prueba ---
+
+
+def coded_prices(first_day=date(2026, 1, 1), n_days=14):
+    """Serie horaria cuyo precio codifica el día y la hora local: día * 100 + hora."""
+    rows = []
+    for i in range(n_days):
+        for ts in local_day_hours(first_day + timedelta(days=i)):
+            rows.append((ts, i * 100 + ts.astimezone(market_timezone()).hour))
+    index = pd.DatetimeIndex([ts for ts, _ in rows], name="datetime")
+    return pd.DataFrame({"price": [float(p) for _, p in rows]}, index=index)
+
+
+def row(df, day, hour):
+    """Fila de un día y hora locales."""
+    local = df.index.tz_convert(market_timezone())
+    return df[(local.date == day) & (local.hour == hour)].iloc[0]

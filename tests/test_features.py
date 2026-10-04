@@ -4,25 +4,10 @@ import pandas as pd
 import pytest
 
 from src.processing.features import FEATURES, TARIFF_PERIOD_CODES, build_features
-from src.utils.calendar import local_day_hours, market_timezone, tariff_period
+from src.utils.calendar import tariff_period
+from tests.fakes import coded_prices, row
 
 START = date(2026, 1, 1)
-
-
-def coded_prices(first_day=START, n_days=14):
-    """Serie horaria cuyo precio codifica el día y la hora local: día * 100 + hora."""
-    rows = []
-    for i in range(n_days):
-        for ts in local_day_hours(first_day + timedelta(days=i)):
-            rows.append((ts, i * 100 + ts.astimezone(market_timezone()).hour))
-    index = pd.DatetimeIndex([ts for ts, _ in rows], name="datetime")
-    return pd.DataFrame({"price": [float(p) for _, p in rows]}, index=index)
-
-
-def row(df, day, hour):
-    """Fila de un día y hora locales."""
-    local = df.index.tz_convert(market_timezone())
-    return df[(local.date == day) & (local.hour == hour)].iloc[0]
 
 
 def test_all_features_are_added_and_the_index_is_kept():
