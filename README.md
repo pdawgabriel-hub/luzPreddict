@@ -6,7 +6,7 @@
 
 **Predicción del precio de la luz (PVPC) en España para el día siguiente, hora a hora**, con una web para consultarlo y herramientas para decidir cuándo consumir y ahorrar.
 
-> 🚧 **Proyecto en desarrollo.** Este documento describe lo que será la aplicación; las piezas se van incorporando por fases.
+> **Proyecto en desarrollo.** Este documento describe lo que será la aplicación; las piezas se van incorporando por fases.
 
 ---
 
