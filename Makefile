@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test clean
+.PHONY: help install lint format test backfill clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -21,6 +21,9 @@ format: ## Corrige y formatea el código con ruff
 
 test: ## Ejecuta los tests
 	$(PYTHON) -m pytest
+
+backfill: ## Descarga o actualiza el histórico de REE en data/raw
+	$(PYTHON) -m src.ingestion.backfill
 
 clean: ## Borra cachés de Python, pytest y ruff
 	find . -path ./venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
