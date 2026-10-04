@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 
+import numpy as np
 import pandas as pd
 
 from src.ingestion import generation, prices
@@ -64,3 +65,20 @@ def row(df, day, hour):
     """Fila de un día y hora locales."""
     local = df.index.tz_convert(market_timezone())
     return df[(local.date == day) & (local.hour == hour)].iloc[0]
+
+
+def synthetic_prices(first_day=date(2026, 1, 1), n_days=70, seed=0):
+    """Precio con patrón semanal y horario claro, un nivel que va cambiando y ruido."""
+    rng = np.random.default_rng(seed)
+    index, values = [], []
+    level = 150.0
+    for i in range(n_days):
+        day = first_day + timedelta(days=i)
+        level += rng.normal(0, 3)
+        weekend = 0.7 if day.weekday() >= 5 else 1.0
+        for ts in local_day_hours(day):
+            hour = ts.astimezone(market_timezone()).hour
+            shape = 1.4 if 19 <= hour <= 21 else (0.6 if 13 <= hour <= 16 else 1.0)
+            index.append(ts)
+            values.append(level * weekend * shape + rng.normal(0, 5))
+    return pd.DataFrame({"price": values}, index=pd.DatetimeIndex(index, name="datetime"))

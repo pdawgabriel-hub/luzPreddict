@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -6,28 +6,13 @@ import pytest
 
 from src.models.baselines import BaselineForecaster
 from src.models.evaluate import METRICS, backtest
-from src.models.train import LightGBMForecaster, compare_models
+from src.models.lightgbm_model import LightGBMForecaster
+from src.models.train import compare_models
 from src.processing.features import FEATURES, build_features
-from src.utils.calendar import local_day_hours, market_timezone
+from src.utils.calendar import local_day_hours
+from tests.fakes import synthetic_prices
 
 FAST = {"n_estimators": 60, "learning_rate": 0.1}
-
-
-def synthetic_prices(first_day=date(2026, 1, 1), n_days=70, seed=0):
-    """Precio con patrón semanal y horario claro, un nivel que va cambiando y ruido."""
-    rng = np.random.default_rng(seed)
-    index, values = [], []
-    level = 150.0
-    for i in range(n_days):
-        day = first_day + timedelta(days=i)
-        level += rng.normal(0, 3)
-        weekend = 0.7 if day.weekday() >= 5 else 1.0
-        for ts in local_day_hours(day):
-            hour = ts.astimezone(market_timezone()).hour
-            shape = 1.4 if 19 <= hour <= 21 else (0.6 if 13 <= hour <= 16 else 1.0)
-            index.append(ts)
-            values.append(level * weekend * shape + rng.normal(0, 5))
-    return pd.DataFrame({"price": values}, index=pd.DatetimeIndex(index, name="datetime"))
 
 
 @pytest.fixture(scope="module")

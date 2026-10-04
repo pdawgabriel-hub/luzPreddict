@@ -129,7 +129,7 @@ flowchart LR
 - Despliegue de la API y la web en Vercel
 - Mantenimiento de dependencias y revisión de rendimiento y accesibilidad
 
-### Fase 9 — Mejoras (opcional)
+### Fase 9 — Complementación
 - Límite de peticiones en la API
 - Previsiones de demanda, eólica y solar como variables del modelo
 - Intervalos de predicción

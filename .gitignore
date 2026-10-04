@@ -16,6 +16,9 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
+# Modelos entrenados (se regeneran con make train)
+/models/
+
 # Checkpoints de Jupyter
 .ipynb_checkpoints/
 
