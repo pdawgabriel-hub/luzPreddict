@@ -34,8 +34,26 @@ BASELINES: dict[str, Callable[[pd.DataFrame], pd.Series]] = {
 }
 
 
-def predict_baseline(name: str, features: pd.DataFrame) -> pd.Series:
-    """Previsión de la referencia `name` para cada fila de `features`."""
+def _check_name(name: str) -> None:
     if name not in BASELINES:
         raise KeyError(f"Referencia desconocida: {name}. Disponibles: {', '.join(BASELINES)}")
+
+
+def predict_baseline(name: str, features: pd.DataFrame) -> pd.Series:
+    """Previsión de la referencia `name` para cada fila de `features`."""
+    _check_name(name)
     return BASELINES[name](features)
+
+
+class BaselineForecaster:
+    """Adapta una referencia a la interfaz de `backtest` (no necesita entrenarse)."""
+
+    def __init__(self, name: str):
+        _check_name(name)
+        self.name = name
+
+    def fit(self, features: pd.DataFrame) -> None:
+        pass
+
+    def predict(self, features: pd.DataFrame) -> pd.Series:
+        return predict_baseline(self.name, features)
