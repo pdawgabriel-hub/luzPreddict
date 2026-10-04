@@ -2,9 +2,9 @@ from datetime import date
 
 import pytest
 
-from src.ingestion import backfill, prices
+from src.ingestion import backfill, generation, prices
 from src.utils.config import get_settings
-from tests.fakes import FakeClient
+from tests.fakes import FakeClient, FakeGenerationClient
 
 TODAY = date(2026, 10, 4)
 
@@ -70,3 +70,52 @@ def test_warns_about_missing_hours(path, caplog):
     backfill.update_pvpc(start=date(2026, 9, 1), end=date(2026, 9, 1), client=GappyClient(), path=path)
 
     assert "faltan 3 horas" in caplog.text
+
+
+# --- Generación ---
+
+
+def test_generation_first_run_goes_until_today(tmp_path):
+    client = FakeGenerationClient()
+
+    backfill.update_generation(client=client, path=tmp_path / "gen.parquet", today=TODAY)
+
+    assert client.calls == [(generation.GENERATION_PATH, get_settings().history_start, TODAY, "day")]
+
+
+def test_generation_incremental_run_starts_from_the_last_saved_day(tmp_path):
+    path = tmp_path / "gen.parquet"
+    backfill.update_generation(start=date(2026, 9, 1), end=date(2026, 9, 30), client=FakeGenerationClient(), path=path)
+    client = FakeGenerationClient(mwh={"Eólica": 7.0, "Nuclear": 50.0})
+
+    df = backfill.update_generation(client=client, path=path, today=TODAY)
+
+    assert client.calls[0][1:3] == (date(2026, 9, 30), TODAY)
+    assert df["date"].nunique() == 34  # del 1 de septiembre al 4 de octubre
+    last_wind = df[(df["date"] == TODAY) & (df["technology"] == "Eólica")]["mwh"]
+    assert last_wind.tolist() == [7.0]
+
+
+def test_generation_warns_about_missing_days(tmp_path, caplog):
+    path = tmp_path / "gen.parquet"
+    backfill.update_generation(start=date(2026, 9, 1), end=date(2026, 9, 2), client=FakeGenerationClient(), path=path)
+    backfill.update_generation(start=date(2026, 9, 5), end=date(2026, 9, 5), client=FakeGenerationClient(), path=path)
+
+    assert "faltan 2 días" in caplog.text
+
+
+# --- Línea de comandos ---
+
+
+@pytest.mark.parametrize(
+    "argv, expected",
+    [([], ["pvpc", "generacion"]), (["--only", "pvpc"], ["pvpc"]), (["--only", "generacion"], ["generacion"])],
+)
+def test_cli_runs_the_selected_datasets(monkeypatch, argv, expected):
+    ran = []
+    monkeypatch.setattr(backfill, "update_pvpc", lambda **kw: ran.append("pvpc"))
+    monkeypatch.setattr(backfill, "update_generation", lambda **kw: ran.append("generacion"))
+
+    backfill.main(argv)
+
+    assert ran == expected

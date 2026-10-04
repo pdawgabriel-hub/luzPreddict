@@ -22,7 +22,7 @@ format: ## Corrige y formatea el código con ruff
 test: ## Ejecuta los tests
 	$(PYTHON) -m pytest
 
-backfill: ## Descarga o actualiza el histórico de REE en data/raw
+backfill: ## Descarga o actualiza el PVPC y la generación de REE en data/raw
 	$(PYTHON) -m src.ingestion.backfill
 
 clean: ## Borra cachés de Python, pytest y ruff
