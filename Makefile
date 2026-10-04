@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test backfill clean
+.PHONY: help install lint format test backfill backtest clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -24,6 +24,9 @@ test: ## Ejecuta los tests
 
 backfill: ## Descarga o actualiza el PVPC y la generación de REE en data/raw
 	$(PYTHON) -m src.ingestion.backfill
+
+backtest: ## Compara LightGBM con las referencias en el periodo de prueba (desde 2025)
+	$(PYTHON) -m src.models.train
 
 clean: ## Borra cachés de Python, pytest y ruff
 	find . -path ./venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
