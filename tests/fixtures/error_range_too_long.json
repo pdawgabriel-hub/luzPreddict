@@ -1,0 +1,12 @@
+{
+ "status": 400,
+ "body": {
+  "errors": [
+   {
+    "status": "400",
+    "title": "Error Interno",
+    "detail": "Los datos solicitados no están disponibles en este momento. Inténtelo de nuevo más tarde."
+   }
+  ]
+ }
+}
