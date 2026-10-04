@@ -1,20 +1,6 @@
-# Data Science & Analytics
-pandas>=2.0.0
-pyarrow>=14.0.0
-numpy>=1.24.0
-
-# API & Peticiones
-requests>=2.31.0
-
-# Machine Learning & Time Series
-scikit-learn>=1.3.0
-lightgbm>=4.0.0
-
-# Visualización & Dashboard
-streamlit>=1.30.0
-plotly>=5.18.0
-
-# Utilidades & Testing
-pytest>=7.4.0
-python-dotenv>=1.0.0
-pydantic-settings>=2.0.0
+# Dependencias de la API: es lo que instala Vercel.
+# Mantenerlo ligero: nada de pandas ni librerías de ML aquí.
+fastapi>=0.115
+pydantic-settings>=2.0
+sqlalchemy>=2.0
+psycopg[binary]>=3.2

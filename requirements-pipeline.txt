@@ -1,0 +1,16 @@
+# Pipeline de datos y modelo (GitHub Actions y local).
+# Incluye las de la API porque comparte src/db y src/services.
+-r requirements.txt
+
+# Datos
+pandas>=2.2
+numpy>=1.26
+pyarrow>=14.0
+requests>=2.31
+
+# Modelo
+scikit-learn>=1.4
+lightgbm>=4.0
+
+# Migraciones de la base de datos
+alembic>=1.13

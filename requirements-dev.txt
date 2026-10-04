@@ -1,0 +1,13 @@
+# Desarrollo local: todo lo anterior más tests, servidor y notebooks.
+-r requirements-pipeline.txt
+
+# Tests
+pytest>=8.0
+httpx>=0.27
+
+# Servidor local de la API
+uvicorn[standard]>=0.30
+
+# Notebooks
+jupyter>=1.0
+plotly>=5.18
