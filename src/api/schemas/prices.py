@@ -38,3 +38,47 @@ class Forecast(BaseModel):
     unit: Unit = "€/MWh"
     mae: float | None = Field(description="Error absoluto medio frente al precio real, cuando ya está publicado entero")
     hours: list[ForecastHour]
+
+
+class Window(BaseModel):
+    start: dt.datetime = Field(description="Inicio de la primera hora, en hora de Madrid")
+    end: dt.datetime = Field(description="Fin de la última hora")
+    avg_price: float = Field(description="Precio medio de la ventana en €/MWh")
+
+
+class BestHours(BaseModel):
+    date: dt.date
+    hours: int = Field(description="Duración pedida, en horas")
+    from_hour: int
+    to_hour: int
+    unit: Unit = "€/MWh"
+    window: Window = Field(description="Las horas seguidas más baratas dentro de la franja")
+    cheapest: list[PriceHour] = Field(description="Las horas más baratas de la franja, aunque no sean seguidas")
+    day_avg_price: float = Field(description="Precio medio de todo el día")
+    saving_pct: float | None = Field(
+        description="Cuánto más barata es la ventana que la media del día, en % (negativo si es más cara)"
+    )
+
+
+class ForecastError(BaseModel):
+    model: str
+    mae: float = Field(description="Error absoluto medio en €/MWh")
+
+
+class DaySummary(BaseModel):
+    date: dt.date
+    avg_price: float
+    min_price: float
+    min_hour: dt.datetime = Field(description="Hora más barata")
+    max_price: float
+    max_hour: dt.datetime = Field(description="Hora más cara")
+    complete: bool = Field(description="Si el día tiene todas sus horas publicadas")
+    forecast: ForecastError | None = Field(description="Error de la previsión de ese día, si la hubo")
+
+
+class History(BaseModel):
+    start: dt.date
+    end: dt.date
+    unit: Unit = "€/MWh"
+    missing_days: list[dt.date] = Field(description="Días del rango sin todas sus horas publicadas")
+    days: list[DaySummary]

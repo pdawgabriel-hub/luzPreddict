@@ -17,8 +17,10 @@ from src.db.session import session_scope
 from src.utils.calendar import local_date, local_day_hours
 from src.utils.config import get_settings
 
-# Máximo de días por petición en las consultas por rango
+# Máximo de días por petición: precios hora a hora y resumen diario
 MAX_RANGE_DAYS = 31
+MAX_HISTORY_DAYS = 366
+DEFAULT_HISTORY_DAYS = 30
 
 
 def get_session() -> Iterator[Session]:
@@ -73,6 +75,19 @@ class DayRange:
         return local_day_hours(self.end)[-1] + timedelta(hours=1)
 
 
+def check_range(start: date | None, end: date | None, last_allowed: date, max_days: int) -> DayRange:
+    """Valida un rango con `start` y `end` (los dos o ninguno ya comprobado fuera)."""
+    if start is None or end is None:
+        invalid_query("start" if start is None else "end", "Hay que indicar start y end")
+    check_day("start", start, last_allowed)
+    check_day("end", end, last_allowed)
+    if end < start:
+        invalid_query("end", "end no puede ser anterior a start")
+    if (end - start).days + 1 > max_days:
+        invalid_query("end", f"El rango no puede superar {max_days} días")
+    return DayRange(start, end)
+
+
 def price_range(
     now: NowDep,
     day: Annotated[date | None, Query(alias="date", description="Un día (por defecto, hoy)")] = None,
@@ -88,15 +103,19 @@ def price_range(
         return DayRange(day, day)
     if start is None and end is None:
         return DayRange(today(now), today(now))
-    if start is None or end is None:
-        invalid_query("start" if start is None else "end", "Hay que indicar start y end")
-    check_day("start", start, tomorrow)
-    check_day("end", end, tomorrow)
-    if end < start:
-        invalid_query("end", "end no puede ser anterior a start")
-    if (end - start).days + 1 > MAX_RANGE_DAYS:
-        invalid_query("end", f"El rango no puede superar {MAX_RANGE_DAYS} días")
-    return DayRange(start, end)
+    return check_range(start, end, tomorrow, MAX_RANGE_DAYS)
+
+
+def history_range(
+    now: NowDep,
+    start: Annotated[date | None, Query(description="Primer día (por defecto, hace 30 días)")] = None,
+    end: Annotated[date | None, Query(description=f"Último día, incluido (máximo {MAX_HISTORY_DAYS} días)")] = None,
+) -> DayRange:
+    """Rango del histórico: por defecto, los últimos 30 días hasta hoy."""
+    if start is None and end is None:
+        return DayRange(today(now) - timedelta(days=DEFAULT_HISTORY_DAYS - 1), today(now))
+    return check_range(start, end, today(now) + timedelta(days=1), MAX_HISTORY_DAYS)
 
 
 PriceRangeDep = Annotated[DayRange, Depends(price_range)]
+HistoryRangeDep = Annotated[DayRange, Depends(history_range)]
