@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import inspect
 
 from src.db import repository as repo
 from src.db.models import ModelArtifact, ModelRun
@@ -157,6 +158,17 @@ def test_saving_the_same_version_again_replaces_it(db_session):
 
     assert repo.get_model_artifact(db_session, "v1").data == b"b"
     assert db_session.query(ModelArtifact).count() == 1
+
+
+def test_model_metadata_without_reading_the_binary(db_session):
+    repo.save_model_artifact(db_session, _artifact("v1", datetime(2026, 10, 6, 19, tzinfo=UTC), data=b"x" * 10_000))
+    db_session.expunge_all()
+
+    artifact = repo.get_model_artifact(db_session, include_data=False)
+
+    assert artifact.version == "v1"
+    assert "data" not in inspect(artifact).dict  # el binario no se ha leído
+    assert repo.get_model_artifact(db_session, "v1", include_data=False).training_rows == 17_520
 
 
 def test_no_model_in_an_empty_database(db_session):

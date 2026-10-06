@@ -17,7 +17,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, defer, selectinload
 
 from src.db.models import DailyError, ForecastHour, GenerationDay, ModelArtifact, ModelRun, PriceHour
 
@@ -176,6 +176,12 @@ def latest_forecast(session: Session, target_day: date) -> ModelRun | None:
     return session.scalars(query).first()
 
 
+def latest_model_run(session: Session) -> ModelRun | None:
+    """La última previsión generada, para cualquier día (sin cargar sus horas)."""
+    query = select(ModelRun).order_by(ModelRun.generated_at.desc(), ModelRun.id.desc()).limit(1)
+    return session.scalars(query).first()
+
+
 # --- Modelo entrenado ---
 
 
@@ -206,11 +212,19 @@ def save_model_artifact(session: Session, artifact: ArtifactToSave) -> None:
     session.execute(statement)
 
 
-def get_model_artifact(session: Session, version: str | None = None) -> ModelArtifact | None:
-    """El modelo de una versión o, sin versión, el entrenado más recientemente."""
+def get_model_artifact(session: Session, version: str | None = None, include_data: bool = True) -> ModelArtifact | None:
+    """El modelo de una versión o, sin versión, el entrenado más recientemente.
+
+    Con `include_data=False` no se lee el binario del modelo (solo los metadatos).
+    """
+    query = select(ModelArtifact)
     if version is not None:
-        return session.get(ModelArtifact, version)
-    return session.scalars(select(ModelArtifact).order_by(ModelArtifact.trained_at.desc()).limit(1)).first()
+        query = query.where(ModelArtifact.version == version)
+    else:
+        query = query.order_by(ModelArtifact.trained_at.desc()).limit(1)
+    if not include_data:
+        query = query.options(defer(ModelArtifact.data))
+    return session.scalars(query).first()
 
 
 # --- Error diario ---

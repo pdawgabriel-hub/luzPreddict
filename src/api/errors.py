@@ -7,6 +7,7 @@ Toda respuesta de error tiene la misma forma, sea un 404, un 422 o un fallo inte
 `request_id` coincide con la cabecera `X-Request-ID` y con la línea de log de la petición.
 """
 
+import logging
 from http import HTTPStatus
 from typing import Any
 
@@ -15,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException
 
 from src.api.middleware import REQUEST_ID_HEADER
@@ -26,6 +28,7 @@ CODES = {
     422: "validation_error",
     429: "too_many_requests",
     500: "internal_error",
+    503: "service_unavailable",
 }
 
 MESSAGES = {
@@ -35,7 +38,10 @@ MESSAGES = {
     422: "Parámetros no válidos",
     429: "Demasiadas peticiones",
     500: "Error interno del servidor",
+    503: "Base de datos no disponible",
 }
+
+logger = logging.getLogger(__name__)
 
 
 class FieldError(BaseModel):
@@ -98,6 +104,12 @@ async def _validation_error(request: Request, exc: RequestValidationError) -> JS
     return error_response(request, 422, details=details)
 
 
+async def _database_unavailable(request: Request, exc: OperationalError) -> JSONResponse:
+    # Conexión rechazada, caída o tiempo agotado (p. ej. Neon despertando): se puede reintentar
+    logger.warning("Base de datos no disponible (id=%s): %s", getattr(request.state, "request_id", None), exc.orig)
+    return error_response(request, 503, headers={"Retry-After": "30"})
+
+
 async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
     # No se devuelve el detalle del fallo: queda en el log con el mismo request_id
     return error_response(request, 500)
@@ -106,4 +118,5 @@ async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(HTTPException, _http_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
+    app.add_exception_handler(OperationalError, _database_unavailable)
     app.add_exception_handler(Exception, _internal_error)
