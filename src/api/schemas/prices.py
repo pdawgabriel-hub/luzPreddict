@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from src.api.schemas.common import FORECAST_DISCLAIMER, Source, pvpc_source
 from src.utils.calendar import TariffPeriod
 
 Unit = Literal["€/MWh"]
@@ -20,6 +21,7 @@ class Prices(BaseModel):
     unit: Unit = "€/MWh"
     missing_days: list[dt.date] = Field(description="Días del rango sin todas sus horas publicadas")
     hours: list[PriceHour]
+    source: Source = pvpc_source()
 
 
 class ForecastHour(BaseModel):
@@ -38,6 +40,8 @@ class Forecast(BaseModel):
     unit: Unit = "€/MWh"
     mae: float | None = Field(description="Error absoluto medio frente al precio real, cuando ya está publicado entero")
     hours: list[ForecastHour]
+    source: Source = pvpc_source()
+    disclaimer: str = Field(default=FORECAST_DISCLAIMER, description="Aviso: la previsión es orientativa")
 
 
 class Window(BaseModel):
@@ -58,6 +62,7 @@ class BestHours(BaseModel):
     saving_pct: float | None = Field(
         description="Cuánto más barata es la ventana que la media del día, en % (negativo si es más cara)"
     )
+    source: Source = pvpc_source()
 
 
 class ForecastError(BaseModel):
@@ -82,3 +87,4 @@ class History(BaseModel):
     unit: Unit = "€/MWh"
     missing_days: list[dt.date] = Field(description="Días del rango sin todas sus horas publicadas")
     days: list[DaySummary]
+    source: Source = pvpc_source()

@@ -25,6 +25,7 @@ previsión del día siguiente y herramientas para decidir cuándo consumir.
 - Los precios se dan en **€/MWh** (1 €/MWh = 0,001 €/kWh).
 - Las horas van en **hora local de Madrid**, en formato ISO 8601 con desfase.
 - La previsión es **orientativa** y no garantiza el precio final.
+- Cada respuesta de `/v1` indica en `source` la serie de REE de la que salen sus datos.
 
 Datos: [API pública de REE](https://www.ree.es/es/apidatos).
 """

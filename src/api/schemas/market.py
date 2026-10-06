@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from src.api.schemas.common import Source, generation_source
+
 
 class TechnologyShare(BaseModel):
     technology: str = Field(description="Nombre de la tecnología según REE")
@@ -28,3 +30,4 @@ class Market(BaseModel):
     technologies: list[TechnologyShare] = Field(description="Mix acumulado del periodo, de mayor a menor")
     missing_days: list[dt.date] = Field(description="Días del rango sin datos de generación")
     days: list[MarketDay]
+    source: Source = generation_source()
