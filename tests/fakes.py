@@ -87,15 +87,26 @@ def synthetic_prices(first_day=date(2026, 1, 1), n_days=70, seed=0):
 class FakeReeClient:
     """Sirve PVPC y generación como la API de REE, con el PVPC publicado hasta `published_until`."""
 
-    def __init__(self, published_until, price=100.0):
+    def __init__(self, published_until, price=100.0, error=None):
         self.published_until = published_until
         self.prices = FakeClient(price=price)
         self.generation = FakeGenerationClient()
+        self.error = error  # si se indica, todas las peticiones fallan con él
         self.calls = []
 
     def fetch(self, path, start, end, time_trunc="hour", **kwargs):
         self.calls.append((path, start, end))
+        if self.error is not None:
+            raise self.error
         if path == prices.PVPC_PATH:
             end = min(end, self.published_until)
             return self.prices.fetch(path, start, end) if start <= end else {}
         return self.generation.fetch(path, start, end, time_trunc)
+
+
+# Parámetros de LightGBM para que los tests entrenen rápido
+FAST_PARAMS = {"n_estimators": 30, "learning_rate": 0.1}
+
+# Base de datos de prueba del pipeline: synthetic_prices(n_days=SEEDED_DAYS) acaba en SEEDED_LAST_DAY
+SEEDED_DAYS = 40
+SEEDED_LAST_DAY = date(2026, 2, 9)

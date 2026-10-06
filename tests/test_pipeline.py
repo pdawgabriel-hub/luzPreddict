@@ -1,5 +1,4 @@
-from contextlib import contextmanager
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pytest
 
@@ -7,36 +6,8 @@ from src import pipeline
 from src.db import repository
 from src.db.models import ModelRun
 from src.ingestion import prices
-from src.models import lightgbm_model
-from src.processing import dataset
-from tests.fakes import FakeReeClient, synthetic_prices
-
-FAST = {"n_estimators": 30, "learning_rate": 0.1}
-LAST_DAY = date(2026, 2, 9)  # último día de synthetic_prices(n_days=40)
-
-
-@pytest.fixture
-def fast_model(monkeypatch):
-    monkeypatch.setattr(lightgbm_model, "DEFAULT_PARAMS", {**lightgbm_model.DEFAULT_PARAMS, **FAST})
-
-
-@pytest.fixture
-def seeded(db_session):
-    """Base de datos con 40 días de precios (hasta el 9 de febrero de 2026)."""
-    dataset.save_prices(db_session, synthetic_prices(n_days=40).reset_index())
-    return db_session
-
-
-@pytest.fixture
-def sessions(db_session):
-    """Sustituye a session_scope en `daily`: todos los pasos usan la sesión del test."""
-
-    @contextmanager
-    def factory():
-        yield db_session
-        db_session.flush()
-
-    return factory
+from tests.fakes import SEEDED_LAST_DAY as LAST_DAY
+from tests.fakes import FakeReeClient
 
 
 def test_backfill_continues_from_the_last_saved_day(seeded):
