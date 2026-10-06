@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.utils.config import Settings, get_settings
 from src.utils.logging import configure_logging
@@ -49,7 +50,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_tags=TAGS,
         docs_url="/docs",
         redoc_url=None,
+        responses=error_responses(500),
     )
+    register_error_handlers(app)
 
     # El último que se añade es el primero en recibir la petición:
     # id y logging -> CORS -> GZip -> rutas
