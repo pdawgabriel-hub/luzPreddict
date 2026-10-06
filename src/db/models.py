@@ -22,6 +22,7 @@ from sqlalchemy import (
     String,
     Text,
     TypeDecorator,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -100,6 +101,8 @@ class ModelRun(Base):
     """Una ejecución de la previsión: qué día se predijo, cuándo y con qué modelo."""
 
     __tablename__ = "model_run"
+    # Guardar la misma ejecución dos veces no la duplica
+    __table_args__ = (UniqueConstraint("target_day", "generated_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     target_day: Mapped[date] = mapped_column(Date, index=True)
