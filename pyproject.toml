@@ -25,3 +25,7 @@ select = [
     "B",   # errores habituales (bugbear)
     "SIM", # simplificaciones
 ]
+
+[tool.ruff.lint.isort]
+# La carpeta alembic/ (migraciones) no es la librería alembic
+known-third-party = ["alembic"]
