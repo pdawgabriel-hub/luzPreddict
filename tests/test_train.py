@@ -93,3 +93,18 @@ def test_learns_weekly_and_hourly_patterns_better_than_yesterday_price(prices):
     assert summary.index[0] == "lightgbm"  # ordenado de mejor a peor MAE
     assert summary.loc["lightgbm", "mae"] < summary.loc["precio_ayer", "mae"]
     assert set(results) == {"precio_ayer", "lightgbm"}
+
+
+def test_multi_day_backtest_with_refits_never_uses_future_prices(prices):
+    """Con reentrenos por el camino, cambiar los precios desde D no altera ninguna previsión hasta D."""
+    start, cut, end = date(2026, 3, 1), date(2026, 3, 4), date(2026, 3, 7)
+    tampered = prices.copy()
+    tampered.loc[tampered.index >= local_day_hours(cut)[0], "price"] *= 3
+
+    original = backtest(prices, LightGBMForecaster(params=FAST), start, end, refit_every_days=2)
+    changed = backtest(tampered, LightGBMForecaster(params=FAST), start, end, refit_every_days=2)
+
+    until_cut = original["day"] <= cut
+    pd.testing.assert_series_equal(original.loc[until_cut, "prediction"], changed.loc[until_cut, "prediction"])
+    # Después de D sí deben cambiar: el modelo ya conoce los precios alterados
+    assert not np.allclose(original.loc[~until_cut, "prediction"], changed.loc[~until_cut, "prediction"])

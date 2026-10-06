@@ -70,6 +70,8 @@ def predict_day(
     try:
         artifact = artifact or load()
         values = artifact.model.predict(features)
+        if not values.index.equals(features.index):
+            raise ValueError("el modelo devolvió previsiones para otras horas")
         if not np.isfinite(values.to_numpy(dtype=float)).all():
             raise ValueError("el modelo devolvió valores vacíos o infinitos")
         return Forecast(
