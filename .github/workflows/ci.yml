@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "fase-*"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -20,6 +20,25 @@ jobs:
     name: Lint y tests (Python)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # PostgreSQL para los tests de base de datos (misma versión que en local)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: luz
+          POSTGRES_PASSWORD: luz
+          POSTGRES_DB: luzpreddict_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U luz -d luzpreddict_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://luz:luz@localhost:5432/luzpreddict_test
 
     steps:
       - uses: actions/checkout@v4

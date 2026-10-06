@@ -1,9 +1,12 @@
 """Fixtures compartidas: base de datos de pruebas y pipeline.
 
 Los tests de base de datos usan TEST_DATABASE_URL (ver .env.example). Si no
-está definida o el servidor no responde, se saltan en lugar de fallar.
+está definida o el servidor no responde, se saltan en local; en CI (variable de
+entorno CI, que GitHub Actions define siempre) fallan, para que nunca se den por
+buenos sin haberse ejecutado.
 """
 
+import os
 from contextlib import contextmanager
 
 import pytest
@@ -18,18 +21,24 @@ from src.utils.config import get_settings
 from tests.fakes import FAST_PARAMS, SEEDED_DAYS, synthetic_prices
 
 
+def _skip_or_fail(reason: str) -> None:
+    if os.environ.get("CI"):
+        pytest.fail(f"En CI los tests de base de datos no se pueden saltar: {reason}")
+    pytest.skip(reason)
+
+
 @pytest.fixture(scope="session")
 def db_engine():
     settings = get_settings()
     if not settings.test_database_url:
-        pytest.skip("TEST_DATABASE_URL no está definida")
+        _skip_or_fail("TEST_DATABASE_URL no está definida")
     check_test_database_url(settings.test_database_url, settings.database_url)
 
     engine = make_engine(settings.test_database_url)
     try:
         engine.connect().close()
     except OperationalError as exc:
-        pytest.skip(f"No se puede conectar a la base de datos de pruebas: {exc.orig}")
+        _skip_or_fail(f"No se puede conectar a la base de datos de pruebas: {exc.orig}")
 
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
