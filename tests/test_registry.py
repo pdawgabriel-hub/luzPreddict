@@ -1,3 +1,4 @@
+import dataclasses
 import io
 import json
 import os
@@ -21,7 +22,9 @@ from src.models.registry import (
     build_metadata,
     deserialize,
     load_artifact,
+    load_from_db,
     save_artifact,
+    save_to_db,
     serialize,
 )
 from src.processing.features import FEATURES, build_features
@@ -149,3 +152,40 @@ def test_model_saved_by_the_cli_loads_from_another_program(tmp_path):
     loaded = load_artifact(models_dir)
     assert type(loaded.model).__module__ == "src.models.lightgbm_model"
     assert loaded.model.predict(build_features(synthetic_prices(n_days=10))).notna().any()
+
+
+# --- Base de datos ---
+
+
+def test_save_and_load_from_the_database(db_session, artifact, features):
+    save_to_db(db_session, artifact)
+
+    loaded = load_from_db(db_session)
+
+    assert loaded.metadata == artifact.metadata
+    pd.testing.assert_series_equal(loaded.model.predict(features), artifact.model.predict(features))
+
+
+def test_loads_the_latest_model_or_a_given_version(db_session, artifact):
+    older = ModelArtifact(
+        model=artifact.model,
+        metadata=dataclasses.replace(
+            artifact.metadata, version="20240101-000000", trained_at=datetime(2024, 1, 1, tzinfo=UTC)
+        ),
+    )
+    save_to_db(db_session, artifact)
+    save_to_db(db_session, older)
+
+    assert load_from_db(db_session).metadata.version == artifact.metadata.version
+    assert load_from_db(db_session, "20240101-000000").metadata.version == "20240101-000000"
+
+
+def test_no_model_in_the_database_is_a_clear_error(db_session):
+    with pytest.raises(LookupError, match="make train"):
+        load_from_db(db_session)
+
+
+def test_model_with_other_features_is_rejected_from_the_database(db_session, artifact):
+    save_to_db(db_session, artifact)
+    with pytest.raises(IncompatibleModelError):
+        load_from_db(db_session, expected_features=FEATURES[:-1])

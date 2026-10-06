@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from src.db import repository as repo
-from src.db.models import ModelRun
+from src.db.models import ModelArtifact, ModelRun
 
 MADRID = ZoneInfo("Europe/Madrid")
 START = datetime(2026, 10, 1, tzinfo=UTC)
@@ -117,3 +117,80 @@ def test_latest_forecast_is_the_most_recently_generated(db_session):
 def test_naive_datetimes_are_rejected(db_session):
     with pytest.raises(Exception, match="Fecha sin zona horaria"):
         repo.upsert_prices(db_session, [(datetime(2026, 10, 1, 0), 1.0)])
+
+
+# --- Modelo entrenado ---
+
+
+def _artifact(version, trained_at, data=b"modelo"):
+    return repo.ArtifactToSave(
+        version=version,
+        trained_at=trained_at,
+        train_start=trained_at - timedelta(days=730),
+        train_end=trained_at,
+        training_rows=17_520,
+        features=["hour"],
+        params={"objective": "l1"},
+        metrics={"models": {"lightgbm": {"mae": 16.0}}},
+        library_versions={"lightgbm": "4.7.0"},
+        format_version=1,
+        data=data,
+    )
+
+
+def test_save_and_read_model_artifacts(db_session):
+    old = _artifact("20261001-190000", datetime(2026, 10, 1, 19, tzinfo=UTC))
+    new = _artifact("20261006-190000", datetime(2026, 10, 6, 19, tzinfo=UTC), data=b"nuevo")
+    repo.save_model_artifact(db_session, new)
+    repo.save_model_artifact(db_session, old)
+
+    assert repo.get_model_artifact(db_session).version == new.version  # el más reciente, no el último guardado
+    assert repo.get_model_artifact(db_session, old.version).data == b"modelo"
+    assert repo.get_model_artifact(db_session, "no-existe") is None
+
+
+def test_saving_the_same_version_again_replaces_it(db_session):
+    trained_at = datetime(2026, 10, 6, 19, tzinfo=UTC)
+    repo.save_model_artifact(db_session, _artifact("v1", trained_at, data=b"a"))
+    repo.save_model_artifact(db_session, _artifact("v1", trained_at, data=b"b"))
+    db_session.expire_all()
+
+    assert repo.get_model_artifact(db_session, "v1").data == b"b"
+    assert db_session.query(ModelArtifact).count() == 1
+
+
+def test_no_model_in_an_empty_database(db_session):
+    assert repo.get_model_artifact(db_session) is None
+
+
+# --- Error diario ---
+
+
+def test_save_and_read_daily_errors(db_session):
+    rows = [
+        (date(2026, 10, 5), "lightgbm", 16.0, 22.0, -1.0, 24),
+        (date(2026, 10, 5), "precio_ayer", 28.5, 44.7, 0.0, 24),
+        (date(2026, 10, 6), "lightgbm", 14.0, 20.0, 1.5, 24),
+    ]
+    assert repo.upsert_daily_errors(db_session, rows) == 3
+    assert repo.upsert_daily_errors(db_session, rows) == 0  # idempotente
+
+    lightgbm = repo.get_daily_errors(db_session, model="lightgbm")
+    assert [(e.day, e.mae) for e in lightgbm] == [(date(2026, 10, 5), 16.0), (date(2026, 10, 6), 14.0)]
+    assert len(repo.get_daily_errors(db_session, start=date(2026, 10, 6))) == 1
+
+
+def test_recomputed_daily_error_is_updated(db_session):
+    repo.upsert_daily_errors(db_session, [(date(2026, 10, 5), "lightgbm", 16.0, 22.0, -1.0, 23)])
+    db_session.flush()
+    first = repo.get_daily_errors(db_session)[0]
+    computed_at = first.computed_at
+
+    # Al llegar la hora que faltaba, el error del día se recalcula
+    changed = repo.upsert_daily_errors(db_session, [(date(2026, 10, 5), "lightgbm", 15.0, 21.0, -0.5, 24)])
+    db_session.expire_all()
+
+    updated = repo.get_daily_errors(db_session)[0]
+    assert changed == 1
+    assert (updated.mae, updated.n) == (15.0, 24)
+    assert updated.computed_at >= computed_at

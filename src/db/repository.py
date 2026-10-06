@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, selectinload
 
-from src.db.models import ForecastHour, GenerationDay, ModelRun, PriceHour
+from src.db.models import DailyError, ForecastHour, GenerationDay, ModelArtifact, ModelRun, PriceHour
 
 # Filas por sentencia: PostgreSQL admite como mucho 65 535 parámetros por consulta
 BATCH_SIZE = 5_000
@@ -32,7 +32,12 @@ def _batches(rows: Iterable[Any], size: int = BATCH_SIZE) -> Iterator[list[Any]]
 
 
 def _upsert(session: Session, model: Any, rows: Iterable[dict[str, Any]], keys: list[str], values: list[str]) -> int:
-    """Inserta o actualiza filas; solo cuenta (y toca) las que son nuevas o cambian."""
+    """Inserta o actualiza filas; solo cuenta (y toca) las que son nuevas o cambian.
+
+    Si la tabla tiene `updated_at` o `computed_at`, se pone al momento actual en
+    las filas que cambian.
+    """
+    touched = next((c for c in ("updated_at", "computed_at") if c in model.__table__.c), None)
     changed = 0
     for batch in _batches(rows):
         statement = insert(model).values(batch)
@@ -41,7 +46,7 @@ def _upsert(session: Session, model: Any, rows: Iterable[dict[str, Any]], keys: 
             index_elements=keys,
             set_={
                 **{v: excluded[v] for v in values},
-                **({"updated_at": func.now()} if "updated_at" in model.__table__.c else {}),
+                **({touched: func.now()} if touched else {}),
             },
             where=func.row(*(model.__table__.c[v] for v in values)).is_distinct_from(
                 func.row(*(excluded[v] for v in values))
@@ -160,3 +165,66 @@ def latest_forecast(session: Session, target_day: date) -> ModelRun | None:
         .options(selectinload(ModelRun.hours))
     )
     return session.scalars(query).first()
+
+
+# --- Modelo entrenado ---
+
+
+@dataclass(frozen=True)
+class ArtifactToSave:
+    version: str
+    trained_at: datetime
+    train_start: datetime
+    train_end: datetime
+    training_rows: int
+    features: list[str]
+    params: dict[str, Any]
+    metrics: dict[str, Any]
+    library_versions: dict[str, str]
+    format_version: int
+    data: bytes  # el modelo serializado
+
+
+def save_model_artifact(session: Session, artifact: ArtifactToSave) -> None:
+    """Guarda el modelo; si ya existe esa versión, la sustituye."""
+    values = artifact.__dict__.copy()
+    statement = insert(ModelArtifact).values(values)
+    # El tipo json de PostgreSQL no admite comparaciones con "=", así que no se filtra por cambios:
+    # la misma versión siempre tiene los mismos bytes
+    statement = statement.on_conflict_do_update(
+        index_elements=["version"], set_={k: statement.excluded[k] for k in values if k != "version"}
+    )
+    session.execute(statement)
+
+
+def get_model_artifact(session: Session, version: str | None = None) -> ModelArtifact | None:
+    """El modelo de una versión o, sin versión, el entrenado más recientemente."""
+    if version is not None:
+        return session.get(ModelArtifact, version)
+    return session.scalars(select(ModelArtifact).order_by(ModelArtifact.trained_at.desc()).limit(1)).first()
+
+
+# --- Error diario ---
+
+
+def upsert_daily_errors(session: Session, rows: Iterable[tuple[date, str, float, float, float, int]]) -> int:
+    """Guarda el error de cada día y modelo (día, modelo, MAE, RMSE, sesgo, horas)."""
+    records = (
+        {"day": day, "model": model, "mae": mae, "rmse": rmse, "bias": bias, "n": n}
+        for day, model, mae, rmse, bias, n in rows
+    )
+    return _upsert(session, DailyError, records, ["day", "model"], ["mae", "rmse", "bias", "n"])
+
+
+def get_daily_errors(
+    session: Session, start: date | None = None, end: date | None = None, model: str | None = None
+) -> list[DailyError]:
+    """Errores diarios con `start <= day <= end`, ordenados por día y modelo."""
+    query = select(DailyError).order_by(DailyError.day, DailyError.model)
+    if start is not None:
+        query = query.where(DailyError.day >= start)
+    if end is not None:
+        query = query.where(DailyError.day <= end)
+    if model is not None:
+        query = query.where(DailyError.model == model)
+    return list(session.scalars(query))

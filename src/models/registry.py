@@ -1,7 +1,7 @@
 """Serialización del modelo entrenado junto con sus metadatos.
 
-El modelo se convierte en bytes (joblib comprimido) para poder guardarlo en un
-fichero o, más adelante, en la base de datos. Los metadatos permiten saber qué
+El modelo se convierte en bytes (joblib comprimido) para guardarlo en un
+fichero (desarrollo local) o en la base de datos (tabla `model_artifact`). Los metadatos permiten saber qué
 modelo es, con qué datos se entrenó y cómo de bien funciona, y comprobar al
 cargarlo que sigue siendo compatible con las variables actuales.
 
@@ -20,7 +20,9 @@ from typing import Any
 import joblib
 import lightgbm
 import pandas as pd
+from sqlalchemy.orm import Session
 
+from src.db import repository
 from src.processing.features import FEATURES
 from src.utils.config import get_settings
 
@@ -133,3 +135,38 @@ def load_artifact(directory: Path | None = None) -> ModelArtifact:
     if not path.exists():
         raise FileNotFoundError(f"No hay modelo guardado en {path}: ejecuta make train")
     return deserialize(path.read_bytes())
+
+
+# --- Base de datos ---
+
+
+def save_to_db(session: Session, artifact: ModelArtifact) -> None:
+    """Guarda el modelo y sus metadatos en la tabla `model_artifact`."""
+    meta = artifact.metadata
+    repository.save_model_artifact(
+        session,
+        repository.ArtifactToSave(
+            version=meta.version,
+            trained_at=meta.trained_at,
+            train_start=meta.train_start,
+            train_end=meta.train_end,
+            training_rows=meta.training_rows,
+            features=meta.features,
+            params=meta.params,
+            metrics=meta.metrics,
+            library_versions=meta.library_versions,
+            format_version=meta.format_version,
+            data=serialize(artifact),
+        ),
+    )
+
+
+def load_from_db(
+    session: Session, version: str | None = None, expected_features: list[str] = FEATURES
+) -> ModelArtifact:
+    """Carga un modelo de la base de datos (por defecto, el más reciente)."""
+    row = repository.get_model_artifact(session, version)
+    if row is None:
+        detail = f"la versión {version}" if version else "ningún modelo"
+        raise LookupError(f"No hay {detail} en la base de datos: ejecuta make train")
+    return deserialize(row.data, expected_features)
