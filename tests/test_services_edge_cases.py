@@ -38,6 +38,7 @@ def local(day, hour, fold=0):
         "src.services.simulator",
         "src.services.planner",
         "src.services.digest",
+        "src.services.market",
         "src.db.models",
         "src.db.repository",
         "src.db.session",

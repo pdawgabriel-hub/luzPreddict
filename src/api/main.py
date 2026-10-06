@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.api.routers import health
-from src.api.routers.public import best_hours, forecast, history, prices
+from src.api.routers.public import best_hours, forecast, history, market, prices
 from src.utils.config import Settings, get_settings
 from src.utils.logging import configure_logging
 
@@ -79,6 +79,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(forecast.router, prefix="/v1")
     app.include_router(best_hours.router, prefix="/v1")
     app.include_router(history.router, prefix="/v1")
+    app.include_router(market.router, prefix="/v1")
 
     return app
 

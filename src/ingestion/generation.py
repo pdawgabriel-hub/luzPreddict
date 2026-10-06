@@ -11,24 +11,12 @@ from pathlib import Path
 import pandas as pd
 
 from src.ingestion.ree_client import ReeClient
+from src.services.market import RENEWABLE_TECHNOLOGIES  # noqa: F401 (se usa desde los notebooks)
 from src.utils.calendar import local_date
 from src.utils.config import get_settings
 
 GENERATION_PATH = "generacion/estructura-generacion"
 TOTAL_SERIES = "Generación total"
-
-# Comprobado contra el indicador "Renovable" de REE: la suma coincide exactamente
-RENEWABLE_TECHNOLOGIES = frozenset(
-    {
-        "Eólica",
-        "Solar fotovoltaica",
-        "Solar térmica",
-        "Hidráulica",
-        "Hidroeólica",
-        "Otras renovables",
-        "Residuos renovables",
-    }
-)
 
 COLUMNS = ["date", "technology", "mwh"]
 
