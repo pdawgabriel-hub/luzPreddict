@@ -31,15 +31,24 @@ def _batches(rows: Iterable[Any], size: int = BATCH_SIZE) -> Iterator[list[Any]]
         yield batch
 
 
+def _last_per_key(rows: Iterable[dict[str, Any]], keys: list[str]) -> list[dict[str, Any]]:
+    """Una fila por clave, la última que aparece. Fechas del mismo instante cuentan como la misma clave."""
+    unique: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for row in rows:
+        unique[tuple(row[k] for k in keys)] = row
+    return list(unique.values())
+
+
 def _upsert(session: Session, model: Any, rows: Iterable[dict[str, Any]], keys: list[str], values: list[str]) -> int:
     """Inserta o actualiza filas; solo cuenta (y toca) las que son nuevas o cambian.
 
     Si la tabla tiene `updated_at` o `computed_at`, se pone al momento actual en
-    las filas que cambian.
+    las filas que cambian. Si una clave se repite en la entrada, gana el último
+    valor (PostgreSQL rechaza actualizar la misma fila dos veces en una sentencia).
     """
     touched = next((c for c in ("updated_at", "computed_at") if c in model.__table__.c), None)
     changed = 0
-    for batch in _batches(rows):
+    for batch in _batches(_last_per_key(rows, keys)):
         statement = insert(model).values(batch)
         excluded = statement.excluded
         statement = statement.on_conflict_do_update(
