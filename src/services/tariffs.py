@@ -11,8 +11,9 @@ día, según un perfil horario aproximado (por hora local). En los días de 23 y
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
+from src.services.best_hours import normalize_prices
 from src.utils.calendar import TariffPeriod, market_timezone, tariff_period
 
 # Horas más baratas de cada día a las que se mueve el consumo desplazable
@@ -124,10 +125,8 @@ def compare_bill(
 
     tz = market_timezone()
     by_day: dict[date, list[tuple[datetime, float]]] = defaultdict(list)
-    for ts, price in prices:
-        if ts.tzinfo is None or ts.utcoffset() is None:
-            raise ValueError(f"Hora sin zona horaria: {ts!r}")
-        by_day[ts.astimezone(tz).date()].append((ts.astimezone(UTC), price / 1000))  # €/kWh
+    for ts, price in normalize_prices(prices):  # sin horas repetidas: no se cuentan dos veces
+        by_day[ts.astimezone(tz).date()].append((ts, price / 1000))  # €/kWh
     if not by_day:
         raise ValueError("No hay precios en el periodo")
 

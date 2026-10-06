@@ -6,10 +6,10 @@ se lea de un vistazo en una notificación del móvil.
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
-from src.services.best_hours import Window, best_window, cheapest_hours
+from src.services.best_hours import Window, best_window, cheapest_hours, normalize_prices
 from src.utils.calendar import market_timezone
 
 WINDOW_HOURS = 2
@@ -89,7 +89,7 @@ def build_digest(
     """
     if source not in ("published", "forecast"):
         raise ValueError(f"Fuente desconocida: {source!r} (debe ser 'published' o 'forecast')")
-    rows = sorted((ts.astimezone(UTC), float(p)) for ts, p in prices)
+    rows = normalize_prices(prices)  # sin horas repetidas: la media no se desvía
     if not rows:
         raise ValueError(f"No hay precios del {day}")
 

@@ -20,13 +20,17 @@ class Window:
     avg_price: float  # €/MWh
 
 
-def _sorted_utc(prices: Iterable[tuple[datetime, float]]) -> list[tuple[datetime, float]]:
-    rows = []
+def normalize_prices(prices: Iterable[tuple[datetime, float]]) -> list[tuple[datetime, float]]:
+    """Precios en UTC, ordenados y sin horas repetidas (si una hora llega dos veces, gana el último valor).
+
+    Rechaza las fechas sin zona horaria. Lo usan todos los servicios que reciben precios.
+    """
+    by_hour: dict[datetime, float] = {}
     for ts, price in prices:
         if ts.tzinfo is None or ts.utcoffset() is None:
             raise ValueError(f"Hora sin zona horaria: {ts!r}")
-        rows.append((ts.astimezone(UTC), float(price)))
-    return sorted(rows)
+        by_hour[ts.astimezone(UTC)] = float(price)
+    return sorted(by_hour.items())
 
 
 def best_window(
@@ -44,7 +48,7 @@ def best_window(
     if hours < 1:
         raise ValueError(f"La ventana debe tener al menos 1 hora (se pidieron {hours})")
 
-    rows = _sorted_utc(prices)
+    rows = normalize_prices(prices)
     if not_before is not None:
         rows = [r for r in rows if r[0] >= not_before]
     if end_by is not None:
@@ -74,4 +78,4 @@ def cheapest_hours(prices: Iterable[tuple[datetime, float]], n: int) -> list[tup
     """
     if n < 1:
         raise ValueError(f"Hay que pedir al menos 1 hora (se pidieron {n})")
-    return sorted(_sorted_utc(prices), key=lambda r: (r[1], r[0]))[:n]
+    return sorted(normalize_prices(prices), key=lambda r: (r[1], r[0]))[:n]

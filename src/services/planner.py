@@ -83,9 +83,9 @@ def _window(start: datetime, hours: int) -> list[datetime]:
     return [start + i * HOUR for i in range(hours)]
 
 
-def _clamp_to_day(start: datetime, hours: int, last_hour: datetime) -> datetime:
-    """Adelanta el inicio si la tarea no cabe antes de la última hora con precio."""
-    return min(start.astimezone(UTC), last_hour - (hours - 1) * HOUR)
+def _clamp_to_day(start: datetime, hours: int, first_hour: datetime, last_hour: datetime) -> datetime:
+    """Ajusta el inicio para que la tarea quede dentro de las horas con precio."""
+    return max(first_hour, min(start.astimezone(UTC), last_hour - (hours - 1) * HOUR))
 
 
 def plan_day(
@@ -109,10 +109,13 @@ def plan_day(
         raise ValueError("Hay tareas con el mismo id")
 
     hours = sorted(by_hour)
-    last_hour = hours[-1]
+    first_hour, last_hour = hours[0], hours[-1]
+    too_long = [t.id for t in tasks if t.appliance.hours > len(hours)]
+    if too_long:
+        raise ValueError(f"Tareas más largas que el periodo con precios ({len(hours)} h): {', '.join(too_long)}")
     load = dict.fromkeys(hours, base_load_kw)
     habitual_load = dict.fromkeys(hours, base_load_kw)
-    habitual = {t.id: _clamp_to_day(t.habitual_start, t.appliance.hours, last_hour) for t in tasks}
+    habitual = {t.id: _clamp_to_day(t.habitual_start, t.appliance.hours, first_hour, last_hour) for t in tasks}
     placed: dict[str, datetime | None] = {}
 
     for task in tasks:
