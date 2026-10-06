@@ -1,6 +1,6 @@
 # Dependencias de la API: es lo que instala Vercel.
 # Mantenerlo ligero: nada de pandas ni librerías de ML aquí.
 fastapi>=0.115
-pydantic-settings>=2.0
+pydantic-settings>=2.7  # NoDecode para listas separadas por comas
 sqlalchemy>=2.0
 psycopg[binary]>=3.2

@@ -41,7 +41,7 @@ predict: ## Muestra la previsión del primer día sin precio publicado (sin guar
 	$(PYTHON) -m src.pipeline predict
 
 api: ## Arranca la API en http://localhost:8000 (documentación en /docs)
-	$(PYTHON) -m uvicorn src.api.main:app --reload --port 8000
+	$(PYTHON) -m uvicorn src.api.main:app --reload --port 8000 --no-access-log
 
 clean: ## Borra cachés de Python, pytest y ruff
 	find . -path ./venv -prune -o -type d -name __pycache__ -exec rm -rf {} +

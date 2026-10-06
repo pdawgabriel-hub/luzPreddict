@@ -6,6 +6,12 @@ el modelo, para que sea ligera en Vercel.
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+
+from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
+from src.utils.config import Settings, get_settings
+from src.utils.logging import configure_logging
 
 API_VERSION = "0.1.0"
 
@@ -28,9 +34,14 @@ TAGS = [
     {"name": "Estado", "description": "Estado del servicio y frescura de los datos"},
 ]
 
+# Las respuestas pequeñas no compensan comprimirlas
+GZIP_MINIMUM_BYTES = 1000
 
-def create_app() -> FastAPI:
+
+def create_app(settings: Settings | None = None) -> FastAPI:
     """Construye la aplicación. Los tests crean una nueva en cada caso."""
+    settings = settings or get_settings()
+    configure_logging()
     app = FastAPI(
         title="luzPreddict API",
         version=API_VERSION,
@@ -39,6 +50,20 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url=None,
     )
+
+    # El último que se añade es el primero en recibir la petición:
+    # id y logging -> CORS -> GZip -> rutas
+    app.add_middleware(GZipMiddleware, minimum_size=GZIP_MINIMUM_BYTES)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET"],  # API de solo lectura
+        allow_headers=[REQUEST_ID_HEADER],
+        expose_headers=[REQUEST_ID_HEADER],
+        allow_credentials=False,  # sin usuarios ni cookies
+        max_age=3600,
+    )
+    app.add_middleware(RequestContextMiddleware)
 
     @app.get("/", tags=["Estado"], summary="Información de la API")
     def root() -> dict[str, str]:

@@ -13,6 +13,7 @@ def test_defaults():
     assert settings.history_start == date(2021, 6, 1)
     assert settings.raw_dir == ROOT_DIR / "data" / "raw"
     assert settings.processed_dir == ROOT_DIR / "data" / "processed"
+    assert settings.cors_origins == ["http://localhost:5173"]
 
 
 def test_environment_overrides_defaults(monkeypatch):
@@ -33,6 +34,12 @@ def test_rejects_chunks_longer_than_ree_allows(monkeypatch):
     monkeypatch.setenv("REE_MAX_DAYS_PER_REQUEST", "31")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_cors_origins_are_comma_separated(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", " https://luzpreddict.vercel.app/ , http://localhost:5173,")
+    settings = Settings(_env_file=None)
+    assert settings.cors_origins == ["https://luzpreddict.vercel.app", "http://localhost:5173"]
 
 
 def test_get_settings_is_cached():

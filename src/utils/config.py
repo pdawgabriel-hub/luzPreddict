@@ -7,10 +7,11 @@ Los valores se leen de variables de entorno o del fichero `.env` de la raíz
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -42,6 +43,9 @@ class Settings(BaseSettings):
     # Base de datos que vacían los tests: debe ser distinta y su nombre terminar en "_test"
     test_database_url: str | None = None
 
+    # Orígenes que pueden llamar a la API desde el navegador (en .env, separados por comas)
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+
     @field_validator("timezone")
     @classmethod
     def _check_timezone(cls, value: str) -> str:
@@ -49,6 +53,13 @@ class Settings(BaseSettings):
             ZoneInfo(value)
         except (ZoneInfoNotFoundError, ValueError) as exc:
             raise ValueError(f"Zona horaria desconocida: {value}") from exc
+        return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
         return value
 
     @property
