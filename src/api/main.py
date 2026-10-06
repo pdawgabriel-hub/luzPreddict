@@ -12,6 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.api.routers import health
+from src.api.routers.public import forecast, prices
 from src.utils.config import Settings, get_settings
 from src.utils.logging import configure_logging
 
@@ -74,6 +75,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"name": "luzPreddict API", "version": API_VERSION, "docs": "/docs"}
 
     app.include_router(health.router)
+    app.include_router(prices.router, prefix="/v1")
+    app.include_router(forecast.router, prefix="/v1")
 
     return app
 
