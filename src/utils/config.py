@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # Primer día con PVPC 2.0TD
     history_start: date = date(2021, 6, 1)
 
+    # PostgreSQL (formato SQLAlchemy: postgresql+psycopg://usuario:contraseña@host:puerto/base)
+    database_url: str | None = None
+    # Base de datos que vacían los tests: debe ser distinta y su nombre terminar en "_test"
+    test_database_url: str | None = None
+
     @field_validator("timezone")
     @classmethod
     def _check_timezone(cls, value: str) -> str:
