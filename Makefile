@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test migrate backfill pipeline backtest train predict clean
+.PHONY: help install lint format test migrate backfill pipeline backtest train predict api clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -39,6 +39,9 @@ train: ## Entrena LightGBM con el histórico de la base de datos y lo guarda en 
 
 predict: ## Muestra la previsión del primer día sin precio publicado (sin guardarla)
 	$(PYTHON) -m src.pipeline predict
+
+api: ## Arranca la API en http://localhost:8000 (documentación en /docs)
+	$(PYTHON) -m uvicorn src.api.main:app --reload --port 8000
 
 clean: ## Borra cachés de Python, pytest y ruff
 	find . -path ./venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
