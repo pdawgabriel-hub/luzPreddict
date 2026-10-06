@@ -84,6 +84,7 @@ def error_response(
         details=details or [],
     )
     headers = dict(headers or {})
+    headers["Cache-Control"] = "no-store"  # un error (p. ej. "aún no publicado") no debe quedarse en caché
     if request_id:
         headers[REQUEST_ID_HEADER] = request_id
     return JSONResponse(jsonable_encoder(ErrorResponse(error=body)), status_code=status_code, headers=headers)

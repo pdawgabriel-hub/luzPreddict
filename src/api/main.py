@@ -5,10 +5,11 @@ La API solo lee de la base de datos y usa `src.services`: no importa pandas ni
 el modelo, para que sea ligera en Vercel.
 """
 
-from fastapi import FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+from src.api.cache import cache_until_refresh, no_store
 from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.api.routers import health
@@ -75,12 +76,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def root() -> dict[str, str]:
         return {"name": "luzPreddict API", "version": API_VERSION, "docs": "/docs"}
 
-    app.include_router(health.router)
-    app.include_router(prices.router, prefix="/v1")
-    app.include_router(forecast.router, prefix="/v1")
-    app.include_router(best_hours.router, prefix="/v1")
-    app.include_router(history.router, prefix="/v1")
-    app.include_router(market.router, prefix="/v1")
+    app.include_router(health.router, dependencies=[Depends(no_store)])
+
+    # API pública: las respuestas valen hasta la siguiente actualización de los datos
+    v1 = APIRouter(prefix="/v1", dependencies=[Depends(cache_until_refresh)])
+    for module in (prices, forecast, best_hours, history, market):
+        v1.include_router(module.router)
+    app.include_router(v1)
 
     return app
 
