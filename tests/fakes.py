@@ -82,3 +82,20 @@ def synthetic_prices(first_day=date(2026, 1, 1), n_days=70, seed=0):
             index.append(ts)
             values.append(level * weekend * shape + rng.normal(0, 5))
     return pd.DataFrame({"price": values}, index=pd.DatetimeIndex(index, name="datetime"))
+
+
+class FakeReeClient:
+    """Sirve PVPC y generación como la API de REE, con el PVPC publicado hasta `published_until`."""
+
+    def __init__(self, published_until, price=100.0):
+        self.published_until = published_until
+        self.prices = FakeClient(price=price)
+        self.generation = FakeGenerationClient()
+        self.calls = []
+
+    def fetch(self, path, start, end, time_trunc="hour", **kwargs):
+        self.calls.append((path, start, end))
+        if path == prices.PVPC_PATH:
+            end = min(end, self.published_until)
+            return self.prices.fetch(path, start, end) if start <= end else {}
+        return self.generation.fetch(path, start, end, time_trunc)
