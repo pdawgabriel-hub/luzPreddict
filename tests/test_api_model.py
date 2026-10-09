@@ -6,36 +6,7 @@ from src.api.cache import seconds_until_refresh
 from src.api.deps import MAX_HISTORY_DAYS
 from src.api.routers.web.model import build_backtest
 from src.db import repository
-from tests.test_api_prices import NOW, TODAY, make_client
-
-METRICS = {
-    "period": {"start": "2026-07-09", "end": "2026-10-06", "days": 90},
-    "models": {
-        "lightgbm": {"mae": 21.93, "rmse": 29.61, "bias": -4.8, "n": 2160.0},
-        "media_7_dias": {"mae": 32.45, "rmse": 44.23, "bias": -2.3, "n": 2160.0},
-        "precio_ayer": {"mae": 33.54, "rmse": 52.7, "bias": -0.49, "n": 2160.0},
-    },
-}
-
-
-def save_artifact(session, metrics=METRICS):
-    repository.save_model_artifact(
-        session,
-        repository.ArtifactToSave(
-            version="20261006-172844",
-            trained_at=NOW - timedelta(days=1),
-            train_start=NOW - timedelta(days=731),
-            train_end=NOW - timedelta(days=1, hours=2),
-            training_rows=17_520,
-            features=["hour", "price_lag_1d"],
-            params={"objective": "l1", "n_estimators": 500},
-            metrics=metrics,
-            library_versions={"lightgbm": "4.7.0"},
-            format_version=1,
-            data=b"x" * 10_000,
-        ),
-    )
-
+from tests.api_helpers import METRICS, NOW, TODAY, make_client, save_artifact
 
 # --- Backtest ---
 
@@ -110,7 +81,7 @@ def test_model_report(client, db_session):
     assert body["model"]["trained_at"].endswith("+02:00")
     assert "data" not in body["model"]
     assert body["backtest"]["improvement_pct"] == 32.4
-    assert (body["live"]["start"], body["live"]["end"]) == ("2026-09-07", "2026-10-06")
+    assert (body["live"]["start"], body["live"]["end"]) == ("2026-09-08", "2026-10-07")
     assert [d["date"] for d in body["live"]["days"]] == ["2026-10-04", "2026-10-05"]
     assert body["live"]["days"][1] == {
         "date": "2026-10-05",
@@ -131,7 +102,7 @@ def test_model_without_metrics_or_errors(client, db_session):
     body = client.get("/api/model", params={"days": 7}).json()
 
     assert body["backtest"] is None
-    assert body["live"] == {"start": "2026-09-30", "end": "2026-10-06", "days": [], "mae": None, "fallback_days": 0}
+    assert body["live"] == {"start": "2026-10-01", "end": "2026-10-07", "days": [], "mae": None, "fallback_days": 0}
 
 
 @pytest.mark.parametrize("days", [0, MAX_HISTORY_DAYS + 1])

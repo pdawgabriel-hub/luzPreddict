@@ -89,7 +89,8 @@ def get_model(
     if artifact is None:
         raise HTTPException(404, "Todavía no hay ningún modelo entrenado")
 
-    end = today(now)
+    # Hasta mañana: en cuanto REE publica (hacia las 20:15), la previsión de mañana ya se puede evaluar
+    end = today(now) + timedelta(days=1)
     start = end - timedelta(days=days - 1)
     errors = repository.get_daily_errors(session, start, end)
     return ModelReport(
