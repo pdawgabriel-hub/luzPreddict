@@ -43,17 +43,17 @@ def today(now: datetime) -> date:
     return local_date(now)
 
 
-def invalid_query(field: str, message: str) -> NoReturn:
-    """Error 422 con el mismo formato que la validación automática."""
-    raise RequestValidationError([{"loc": ("query", field), "msg": message, "type": "value_error"}])
+def invalid_query(field: str, message: str, location: str = "query") -> NoReturn:
+    """Error 422 con el mismo formato que la validación automática (`location`: "query" o "body")."""
+    raise RequestValidationError([{"loc": (location, field), "msg": message, "type": "value_error"}])
 
 
-def check_day(field: str, day: date, last_allowed: date) -> None:
+def check_day(field: str, day: date, last_allowed: date, location: str = "query") -> None:
     first_allowed = get_settings().history_start
     if day < first_allowed:
-        invalid_query(field, f"No hay datos antes del {first_allowed.isoformat()}")
+        invalid_query(field, f"No hay datos antes del {first_allowed.isoformat()}", location)
     if day > last_allowed:
-        invalid_query(field, f"La fecha no puede ser posterior al {last_allowed.isoformat()}")
+        invalid_query(field, f"La fecha no puede ser posterior al {last_allowed.isoformat()}", location)
 
 
 @dataclass(frozen=True)
@@ -75,16 +75,18 @@ class DayRange:
         return local_day_hours(self.end)[-1] + timedelta(hours=1)
 
 
-def check_range(start: date | None, end: date | None, last_allowed: date, max_days: int) -> DayRange:
+def check_range(
+    start: date | None, end: date | None, last_allowed: date, max_days: int, location: str = "query"
+) -> DayRange:
     """Valida un rango con `start` y `end` (los dos o ninguno ya comprobado fuera)."""
     if start is None or end is None:
-        invalid_query("start" if start is None else "end", "Hay que indicar start y end")
-    check_day("start", start, last_allowed)
-    check_day("end", end, last_allowed)
+        invalid_query("start" if start is None else "end", "Hay que indicar start y end", location)
+    check_day("start", start, last_allowed, location)
+    check_day("end", end, last_allowed, location)
     if end < start:
-        invalid_query("end", "end no puede ser anterior a start")
+        invalid_query("end", "end no puede ser anterior a start", location)
     if (end - start).days + 1 > max_days:
-        invalid_query("end", f"El rango no puede superar {max_days} días")
+        invalid_query("end", f"El rango no puede superar {max_days} días", location)
     return DayRange(start, end)
 
 

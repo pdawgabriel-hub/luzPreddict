@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from src.api.deps import HistoryRangeDep, NowDep, SessionDep
 from src.api.errors import error_responses
-from src.api.routers.public.prices import no_prices
+from src.api.queries import no_prices, range_prices
 from src.api.schemas.prices import DaySummary, ForecastError, History
 from src.db import repository
 from src.utils.calendar import hours_in_day, local_date, market_timezone
@@ -25,7 +25,7 @@ router = APIRouter(tags=["Precios"])
     responses=error_responses(404, 422),
 )
 def get_history(days: HistoryRangeDep, session: SessionDep, now: NowDep) -> History:
-    rows = repository.get_prices(session, days.utc_start, days.utc_end)
+    rows = range_prices(session, days)
     if not rows:
         raise no_prices(days, now)
 

@@ -1,30 +1,18 @@
 """/v1/best-hours: cuándo consumir para pagar menos."""
 
-from datetime import date, datetime, time, timedelta
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
-from src.api.deps import DayRange, NowDep, SessionDep, check_day, invalid_query, today
+from src.api.deps import NowDep, SessionDep, invalid_query
 from src.api.errors import error_responses
-from src.api.routers.public.prices import no_prices
+from src.api.queries import day_prices, local_hour
 from src.api.schemas.prices import BestHours, PriceHour, Window
-from src.db import repository
 from src.services.best_hours import best_window, cheapest_hours
-from src.utils.calendar import hours_in_day, market_timezone, tariff_period
+from src.utils.calendar import market_timezone, tariff_period
 
 router = APIRouter(tags=["Precios"])
-
-
-def _local_hour(day: date, hour: int) -> datetime:
-    """Hora de reloj de un día; 24 es la medianoche siguiente."""
-    tz = market_timezone()
-    return datetime.combine(day + timedelta(days=hour // 24), time(hour % 24), tzinfo=tz)
-
-
-def _prices_of(session: SessionDep, day: date) -> list[tuple[datetime, float]]:
-    days = DayRange(day, day)
-    return repository.get_prices(session, days.utc_start, days.utc_end)
 
 
 @router.get(
@@ -50,19 +38,9 @@ def get_best_hours(
     if hours > to_hour - from_hour:
         invalid_query("hours", f"No caben {hours} horas entre las {from_hour}:00 y las {to_hour}:00")
 
-    tomorrow = today(now) + timedelta(days=1)
-    if day is None:
-        rows = _prices_of(session, tomorrow)
-        day = tomorrow if len(rows) == hours_in_day(tomorrow) else today(now)
-        if day != tomorrow:
-            rows = _prices_of(session, day)
-    else:
-        check_day("date", day, tomorrow)
-        rows = _prices_of(session, day)
-    if not rows:
-        raise no_prices(DayRange(day, day), now)
+    day, rows = day_prices(session, now, day)
 
-    not_before, end_by = _local_hour(day, from_hour), _local_hour(day, to_hour)
+    not_before, end_by = local_hour(day, from_hour), local_hour(day, to_hour)
     window = best_window(rows, hours, not_before=not_before, end_by=end_by)
     if window is None:
         raise HTTPException(404, f"No hay {hours} horas seguidas con precio publicado en esa franja")

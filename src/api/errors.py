@@ -97,9 +97,14 @@ async def _http_error(request: Request, exc: HTTPException) -> JSONResponse:
     return error_response(request, exc.status_code, message, headers=exc.headers)
 
 
+def _clean(message: str) -> str:
+    """Pydantic antepone "Value error, " a los mensajes de los validadores propios."""
+    return message.removeprefix("Value error, ")
+
+
 async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     details = [
-        FieldError(field=".".join(str(part) for part in err["loc"]), message=err["msg"], type=err["type"])
+        FieldError(field=".".join(str(part) for part in err["loc"]), message=_clean(err["msg"]), type=err["type"])
         for err in exc.errors()
     ]
     return error_response(request, 422, details=details)
