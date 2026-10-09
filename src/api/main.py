@@ -14,7 +14,7 @@ from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.api.routers import health
 from src.api.routers.public import best_hours, forecast, history, market, prices
-from src.api.routers.web import tools
+from src.api.routers.web import model, tools
 from src.utils.config import Settings, get_settings
 from src.utils.logging import configure_logging
 
@@ -85,8 +85,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         v1.include_router(module.router)
     app.include_router(v1)
 
-    # Uso interno de la web (mismo dominio): no entra en el CORS público, que solo admite GET
+    # Uso interno de la web (mismo dominio). Las herramientas son POST: el CORS público solo admite GET
     app.include_router(tools.router)
+    app.include_router(model.router)
 
     return app
 

@@ -1,0 +1,147 @@
+from datetime import timedelta
+
+import pytest
+
+from src.api.cache import seconds_until_refresh
+from src.api.deps import MAX_HISTORY_DAYS
+from src.api.routers.web.model import build_backtest
+from src.db import repository
+from tests.test_api_prices import NOW, TODAY, make_client
+
+METRICS = {
+    "period": {"start": "2026-07-09", "end": "2026-10-06", "days": 90},
+    "models": {
+        "lightgbm": {"mae": 21.93, "rmse": 29.61, "bias": -4.8, "n": 2160.0},
+        "media_7_dias": {"mae": 32.45, "rmse": 44.23, "bias": -2.3, "n": 2160.0},
+        "precio_ayer": {"mae": 33.54, "rmse": 52.7, "bias": -0.49, "n": 2160.0},
+    },
+}
+
+
+def save_artifact(session, metrics=METRICS):
+    repository.save_model_artifact(
+        session,
+        repository.ArtifactToSave(
+            version="20261006-172844",
+            trained_at=NOW - timedelta(days=1),
+            train_start=NOW - timedelta(days=731),
+            train_end=NOW - timedelta(days=1, hours=2),
+            training_rows=17_520,
+            features=["hour", "price_lag_1d"],
+            params={"objective": "l1", "n_estimators": 500},
+            metrics=metrics,
+            library_versions={"lightgbm": "4.7.0"},
+            format_version=1,
+            data=b"x" * 10_000,
+        ),
+    )
+
+
+# --- Backtest ---
+
+
+def test_backtest_is_sorted_and_compared_with_the_best_baseline():
+    backtest = build_backtest(METRICS)
+
+    assert [m.model for m in backtest.models] == ["lightgbm", "media_7_dias", "precio_ayer"]
+    assert [m.label for m in backtest.models] == ["LightGBM", "Media 7 días", "Precio de ayer"]
+    assert [m.is_baseline for m in backtest.models] == [False, True, True]
+    assert backtest.improvement_pct == round((32.45 - 21.93) / 32.45 * 100, 1)
+    assert backtest.days == 90
+    assert backtest.method.startswith("Walk-forward")
+
+
+def test_model_worse_than_a_baseline_gives_a_negative_improvement():
+    metrics = {
+        **METRICS,
+        "models": {
+            "lightgbm": {"mae": 40.0, "rmse": 1, "bias": 0},
+            "precio_ayer": {**METRICS["models"]["precio_ayer"]},
+        },
+    }
+    backtest = build_backtest(metrics)
+
+    assert backtest.models[0].model == "precio_ayer"
+    assert backtest.improvement_pct < 0
+
+
+@pytest.mark.parametrize("metrics", [{}, {"period": METRICS["period"]}, {"models": METRICS["models"]}])
+def test_models_without_metrics_have_no_backtest(metrics):
+    assert build_backtest(metrics) is None
+
+
+def test_only_baselines_gives_no_improvement():
+    metrics = {**METRICS, "models": {"precio_ayer": METRICS["models"]["precio_ayer"]}}
+    assert build_backtest(metrics).improvement_pct is None
+
+
+# --- Ruta ---
+
+
+@pytest.fixture
+def client(db_session):
+    return make_client(db_session)
+
+
+def test_no_model_is_a_404(client):
+    response = client.get("/api/model")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["message"] == "Todavía no hay ningún modelo entrenado"
+
+
+def test_model_report(client, db_session):
+    save_artifact(db_session)
+    repository.upsert_daily_errors(
+        db_session,
+        [
+            (TODAY - timedelta(days=40), "lightgbm", 99.0, 99.0, 0.0, 24),  # fuera de los 30 días
+            (TODAY - timedelta(days=2), "lightgbm", 20.0, 25.0, -1.0, 24),
+            (TODAY - timedelta(days=1), "precio_ayer", 30.004, 40.0, 2.0, 24),
+        ],
+    )
+
+    response = client.get("/api/model")
+    body = response.json()
+
+    assert body["model"]["version"] == "20261006-172844"
+    assert body["model"]["features"] == ["hour", "price_lag_1d"]
+    assert body["model"]["params"]["objective"] == "l1"
+    assert body["model"]["trained_at"].endswith("+02:00")
+    assert "data" not in body["model"]
+    assert body["backtest"]["improvement_pct"] == 32.4
+    assert (body["live"]["start"], body["live"]["end"]) == ("2026-09-07", "2026-10-06")
+    assert [d["date"] for d in body["live"]["days"]] == ["2026-10-04", "2026-10-05"]
+    assert body["live"]["days"][1] == {
+        "date": "2026-10-05",
+        "model": "precio_ayer",
+        "mae": 30.0,
+        "rmse": 40.0,
+        "bias": 2.0,
+    }
+    assert body["live"]["mae"] == 25.0
+    assert body["live"]["fallback_days"] == 1
+    seconds = seconds_until_refresh(NOW)
+    assert response.headers["cache-control"] == f"public, max-age={seconds}, s-maxage={seconds}"
+
+
+def test_model_without_metrics_or_errors(client, db_session):
+    save_artifact(db_session, metrics={})
+
+    body = client.get("/api/model", params={"days": 7}).json()
+
+    assert body["backtest"] is None
+    assert body["live"] == {"start": "2026-09-30", "end": "2026-10-06", "days": [], "mae": None, "fallback_days": 0}
+
+
+@pytest.mark.parametrize("days", [0, MAX_HISTORY_DAYS + 1])
+def test_days_out_of_range(client, days):
+    response = client.get("/api/model", params={"days": days})
+    assert response.status_code == 422
+    assert response.json()["error"]["details"][0]["field"] == "query.days"
+
+
+def test_model_is_documented(client):
+    operation = client.get("/openapi.json").json()["paths"]["/api/model"]["get"]
+    assert operation["tags"] == ["Previsión"]
+    assert {"404", "422", "500"} <= set(operation["responses"])
