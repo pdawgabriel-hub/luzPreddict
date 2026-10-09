@@ -98,3 +98,26 @@ describe('datos de ejemplo', () => {
     expect(error.details[0]).toMatchObject({ field: 'query.end' })
   })
 })
+
+describe('escenarios de los datos de ejemplo', () => {
+  it('"error" hace fallar todas las peticiones con un 503', async () => {
+    const error = await apiError(mockRequest('GET', '/v1/prices', undefined, { now: AFTER, scenario: 'error' }))
+    expect(error).toMatchObject({ status: 503, code: 'service_unavailable' })
+  })
+
+  it('"stale" solo cambia /health', async () => {
+    const health = (await mockRequest('GET', '/health', undefined, { now: AFTER, scenario: 'stale' })) as Health
+    const prices = await mockRequest('GET', '/v1/prices', undefined, { now: AFTER, scenario: 'stale' })
+
+    expect(health.status).toBe('degraded')
+    expect(health.warnings[0]).toMatch(/faltan los de hoy/)
+    expect(prices).toEqual(await get('/v1/prices'))
+  })
+
+  it('una petición cancelada no responde', async () => {
+    const controller = new AbortController()
+    const result = mockRequest('GET', '/health', undefined, { delayMs: 50, signal: controller.signal }).catch((e: unknown) => e)
+    controller.abort()
+    expect(await result).toMatchObject({ name: 'AbortError' })
+  })
+})

@@ -2,13 +2,22 @@
 // de ejemplo (./data) y los mismos errores (404 si REE aún no ha publicado, etc.).
 
 import { ApiError } from '../api/client'
-import type { BillRequest, PlanRequest, SimulateRequest } from '../api/types'
+import type { BillRequest, Health, PlanRequest, SimulateRequest } from '../api/types'
 import * as data from './data'
 import { addDays } from './time'
 
 const DELAY_MS = 150 // para ver los estados de carga en desarrollo
+const SLOW_DELAY_MS = 3_000
 
-type Options = { now?: Date; delayMs?: number }
+/**
+ * Escenarios para ver en el navegador cada estado de la web (VITE_MOCK_SCENARIO):
+ * - stale: /health avisa de datos desactualizados
+ * - error: todas las peticiones fallan con 503 (base de datos no disponible)
+ * - slow: las respuestas tardan 3 s
+ */
+export type Scenario = 'stale' | 'error' | 'slow'
+
+type Options = { now?: Date; delayMs?: number; signal?: AbortSignal; scenario?: Scenario | '' }
 
 function notFound(message: string): never {
   throw new ApiError(404, 'not_found', message, 'mock')
@@ -110,9 +119,36 @@ function route(method: string, url: URL, body: unknown, now: Date): unknown {
   }
 }
 
+function stale(health: Health): Health {
+  return {
+    ...health,
+    status: 'degraded',
+    warnings: [`El último precio es del ${addDays(health.prices.last_day ?? '', -2)}: faltan los de hoy`],
+  }
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer)
+      reject(signal.reason)
+    })
+  })
+}
+
 /** Responde como la API a `method` + `url` (ruta con su query string). */
 export async function mockRequest(method: string, url: string, body?: unknown, options: Options = {}): Promise<unknown> {
-  const delayMs = options.delayMs ?? (import.meta.env.MODE === 'test' ? 0 : DELAY_MS)
-  if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs))
-  return route(method, new URL(url, 'http://mock'), body, options.now ?? new Date())
+  const scenario = options.scenario ?? (import.meta.env.VITE_MOCK_SCENARIO as Scenario | undefined) ?? ''
+  const defaultDelay = import.meta.env.MODE === 'test' ? 0 : scenario === 'slow' ? SLOW_DELAY_MS : DELAY_MS
+  const delayMs = options.delayMs ?? defaultDelay
+  if (delayMs) await delay(delayMs, options.signal)
+  options.signal?.throwIfAborted()
+
+  if (scenario === 'error') {
+    throw new ApiError(503, 'service_unavailable', 'Base de datos no disponible', 'mock')
+  }
+  const response = route(method, new URL(url, 'http://mock'), body, options.now ?? new Date())
+  if (scenario === 'stale' && url.startsWith('/health')) return stale(response as Health)
+  return response
 }

@@ -54,8 +54,8 @@ api-types: ## Regenera el esquema OpenAPI y los tipos de TypeScript de la web
 web: ## Arranca la web en http://localhost:5173 (reenvía /api, /v1 y /health a la API)
 	npm --prefix frontend run dev
 
-web-mocks: ## Arranca la web con datos de ejemplo, sin API ni base de datos
-	npm --prefix frontend run dev:mocks
+web-mocks: ## Web con datos de ejemplo, sin API (SCENARIO=stale|error|slow para ver avisos, errores o cargas)
+	VITE_MOCK_SCENARIO=$(SCENARIO) npm --prefix frontend run dev:mocks
 
 web-build: ## Compila la web para producción en frontend/dist
 	npm --prefix frontend run build
