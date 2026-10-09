@@ -1,0 +1,2985 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "luzPreddict API",
+    "description": "\nPrecio de la luz (PVPC) en España: precios publicados por Red Eléctrica (REE),\nprevisión del día siguiente y herramientas para decidir cuándo consumir.\n\n- Los precios se dan en **€/MWh** (1 €/MWh = 0,001 €/kWh).\n- Las horas van en **hora local de Madrid**, en formato ISO 8601 con desfase.\n- La previsión es **orientativa** y no garantiza el precio final.\n- Cada respuesta de `/v1` indica en `source` la serie de REE de la que salen sus datos.\n\nDatos: [API pública de REE](https://www.ree.es/es/apidatos).\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Estado"
+        ],
+        "summary": "Información de la API",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Estado"
+        ],
+        "summary": "Estado del servicio",
+        "description": "Última hora con precio, última previsión y modelo en uso, con avisos si algo está desactualizado.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base de datos no disponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/prices": {
+      "get": {
+        "tags": [
+          "Precios"
+        ],
+        "summary": "Precios por día o rango",
+        "description": "PVPC hora a hora de un día (`date`) o de un rango (`start` y `end`), hasta mañana si REE ya lo publicó.",
+        "operationId": "get_prices_v1_prices_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Un día (por defecto, hoy)",
+              "title": "Date"
+            },
+            "description": "Un día (por defecto, hoy)"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día del rango",
+              "title": "Start"
+            },
+            "description": "Primer día del rango"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, incluido (máximo 31 días)",
+              "title": "End"
+            },
+            "description": "Último día, incluido (máximo 31 días)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prices"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/forecast": {
+      "get": {
+        "tags": [
+          "Previsión"
+        ],
+        "summary": "Previsión de un día",
+        "description": "Última previsión generada para `date`; sin `date`, la más reciente. Si REE ya publicó ese día, cada hora incluye el precio real y el error medio.",
+        "operationId": "get_forecast_v1_forecast_get",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Día previsto (por defecto, el más reciente)",
+              "title": "Date"
+            },
+            "description": "Día previsto (por defecto, el más reciente)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Forecast"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/best-hours": {
+      "get": {
+        "tags": [
+          "Precios"
+        ],
+        "summary": "Mejores horas para consumir",
+        "description": "Las `hours` horas seguidas más baratas de un día, opcionalmente dentro de una franja (`from_hour` a `to_hour`, en hora de Madrid), y las horas más baratas sueltas. Sin `date`, usa mañana si REE ya lo publicó y, si no, hoy.",
+        "operationId": "get_best_hours_v1_best_hours_get",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 24,
+              "minimum": 1,
+              "description": "Duración del consumo, en horas",
+              "default": 1,
+              "title": "Hours"
+            },
+            "description": "Duración del consumo, en horas"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Día (por defecto, el último publicado)",
+              "title": "Date"
+            },
+            "description": "Día (por defecto, el último publicado)"
+          },
+          {
+            "name": "from_hour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 23,
+              "minimum": 0,
+              "description": "Primera hora de la franja",
+              "default": 0,
+              "title": "From Hour"
+            },
+            "description": "Primera hora de la franja"
+          },
+          {
+            "name": "to_hour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 24,
+              "minimum": 1,
+              "description": "Hora a la que debe haber terminado",
+              "default": 24,
+              "title": "To Hour"
+            },
+            "description": "Hora a la que debe haber terminado"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BestHours"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/history": {
+      "get": {
+        "tags": [
+          "Precios"
+        ],
+        "summary": "Resumen diario",
+        "description": "Media, mínimo y máximo de cada día, con el error de la previsión de ese día. Por defecto, los últimos 30 días; hasta un año por petición.",
+        "operationId": "get_history_v1_history_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día (por defecto, hace 30 días)",
+              "title": "Start"
+            },
+            "description": "Primer día (por defecto, hace 30 días)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, incluido (máximo 366 días)",
+              "title": "End"
+            },
+            "description": "Último día, incluido (máximo 366 días)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/History"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/market": {
+      "get": {
+        "tags": [
+          "Mercado"
+        ],
+        "summary": "Mix de generación",
+        "description": "Generación diaria por tecnología y % renovable, más el mix acumulado del periodo. Por defecto, los últimos 30 días; hasta un año por petición.",
+        "operationId": "get_market_v1_market_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día (por defecto, hace 30 días)",
+              "title": "Start"
+            },
+            "description": "Primer día (por defecto, hace 30 días)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, incluido (máximo 366 días)",
+              "title": "End"
+            },
+            "description": "Último día, incluido (máximo 366 días)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Market"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tools/catalog": {
+      "get": {
+        "tags": [
+          "Herramientas"
+        ],
+        "summary": "Aparatos, perfiles y potencias para los formularios",
+        "operationId": "get_catalog_api_tools_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tools/simulate": {
+      "post": {
+        "tags": [
+          "Herramientas"
+        ],
+        "summary": "Coste de un aparato y ahorro moviéndolo a la mejor hora",
+        "operationId": "post_simulate_api_tools_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Simulation"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tools/plan": {
+      "post": {
+        "tags": [
+          "Herramientas"
+        ],
+        "summary": "Reparto de aparatos en las horas baratas sin superar la potencia contratada",
+        "operationId": "post_plan_api_tools_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tools/bill": {
+      "post": {
+        "tags": [
+          "Herramientas"
+        ],
+        "summary": "Factura de energía con PVPC frente a un precio fijo",
+        "operationId": "post_bill_api_tools_bill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bill"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/model": {
+      "get": {
+        "tags": [
+          "Previsión"
+        ],
+        "summary": "Modelo en uso, backtest y error real",
+        "description": "Datos del modelo entrenado más recientemente, sus métricas frente a las referencias y el error de las previsiones publicadas en los últimos `days` días.",
+        "operationId": "get_model_api_model_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 366,
+              "minimum": 1,
+              "description": "Días de error real",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Días de error real"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelReport"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Parámetros no válidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApplianceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "power_kw": {
+            "type": "number",
+            "title": "Power Kw"
+          },
+          "hours": {
+            "type": "integer",
+            "title": "Hours"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh",
+            "description": "Consumo de un uso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "power_kw",
+          "hours",
+          "kwh"
+        ],
+        "title": "ApplianceOut"
+      },
+      "Backtest": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method",
+            "description": "Cómo se midió"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelMetrics"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "De menor a mayor error"
+          },
+          "improvement_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improvement Pct",
+            "description": "Cuánto menos se equivoca LightGBM que la mejor referencia, en %"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "days",
+          "method",
+          "models",
+          "improvement_pct"
+        ],
+        "title": "Backtest"
+      },
+      "BestHours": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hours": {
+            "type": "integer",
+            "title": "Hours",
+            "description": "Duración pedida, en horas"
+          },
+          "from_hour": {
+            "type": "integer",
+            "title": "From Hour"
+          },
+          "to_hour": {
+            "type": "integer",
+            "title": "To Hour"
+          },
+          "unit": {
+            "type": "string",
+            "const": "€/MWh",
+            "title": "Unit",
+            "default": "€/MWh"
+          },
+          "window": {
+            "$ref": "#/components/schemas/Window",
+            "description": "Las horas seguidas más baratas dentro de la franja"
+          },
+          "cheapest": {
+            "items": {
+              "$ref": "#/components/schemas/PriceHour"
+            },
+            "type": "array",
+            "title": "Cheapest",
+            "description": "Las horas más baratas de la franja, aunque no sean seguidas"
+          },
+          "day_avg_price": {
+            "type": "number",
+            "title": "Day Avg Price",
+            "description": "Precio medio de todo el día"
+          },
+          "saving_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saving Pct",
+            "description": "Cuánto más barata es la ventana que la media del día, en % (negativo si es más cara)"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "hours",
+          "from_hour",
+          "to_hour",
+          "window",
+          "cheapest",
+          "day_avg_price",
+          "saving_pct"
+        ],
+        "title": "BestHours"
+      },
+      "Bill": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "total_kwh": {
+            "type": "number",
+            "title": "Total Kwh"
+          },
+          "shift_fraction": {
+            "type": "number",
+            "title": "Shift Fraction"
+          },
+          "pvpc_cost": {
+            "type": "number",
+            "title": "Pvpc Cost",
+            "description": "€ con PVPC"
+          },
+          "pvpc_shifted_cost": {
+            "type": "number",
+            "title": "Pvpc Shifted Cost",
+            "description": "€ con PVPC moviendo `shift_fraction` del consumo"
+          },
+          "fixed_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Cost",
+            "description": "€ con el precio fijo"
+          },
+          "effective_price": {
+            "type": "number",
+            "title": "Effective Price",
+            "description": "€/kWh medio pagado con PVPC"
+          },
+          "break_even_price": {
+            "type": "number",
+            "title": "Break Even Price",
+            "description": "Precio fijo (€/kWh) por debajo del cual compensa el fijo"
+          },
+          "fixed_saving": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Saving",
+            "description": "€ ahorrados con PVPC frente al fijo (negativo si gana el fijo)"
+          },
+          "days_fixed_was_cheaper": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Fixed Was Cheaper"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodOut"
+            },
+            "type": "array",
+            "title": "Periods"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayCostOut"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "missing_days": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Missing Days",
+            "description": "Días sin precios: el consumo se reparte entre el resto"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": "Solo el término de energía: sin término de potencia, alquiler del contador ni impuestos."
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "profile",
+          "total_kwh",
+          "shift_fraction",
+          "pvpc_cost",
+          "pvpc_shifted_cost",
+          "fixed_cost",
+          "effective_price",
+          "break_even_price",
+          "fixed_saving",
+          "days_fixed_was_cheaper",
+          "periods",
+          "days",
+          "missing_days"
+        ],
+        "title": "Bill"
+      },
+      "BillRequest": {
+        "properties": {
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start",
+            "description": "Primer día (por defecto, hace 30 días)"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End",
+            "description": "Último día, incluido"
+          },
+          "total_kwh": {
+            "type": "number",
+            "maximum": 100000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total Kwh",
+            "description": "Consumo del periodo, en kWh"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile",
+            "description": "Perfil de consumo horario",
+            "default": "tipico"
+          },
+          "fixed_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Price",
+            "description": "Precio fijo a comparar, en €/kWh"
+          },
+          "shift_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Shift Fraction",
+            "description": "Parte del consumo que se movería a horas baratas",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_kwh"
+        ],
+        "title": "BillRequest"
+      },
+      "Catalog": {
+        "properties": {
+          "appliances": {
+            "items": {
+              "$ref": "#/components/schemas/ApplianceOut"
+            },
+            "type": "array",
+            "title": "Appliances"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileOut"
+            },
+            "type": "array",
+            "title": "Profiles",
+            "description": "Perfiles de consumo horario para la factura"
+          },
+          "contracted_powers_kw": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Contracted Powers Kw",
+            "description": "Potencias contratadas habituales"
+          },
+          "base_load_kw": {
+            "type": "number",
+            "title": "Base Load Kw",
+            "description": "Consumo base que el planificador suma a todas las horas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "appliances",
+          "profiles",
+          "contracted_powers_kw",
+          "base_load_kw"
+        ],
+        "title": "Catalog"
+      },
+      "CustomAppliance": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "power_kw": {
+            "type": "number",
+            "maximum": 15.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Power Kw",
+            "description": "Potencia media durante el uso, en kW"
+          },
+          "hours": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Hours",
+            "description": "Duración de un uso, en horas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "power_kw",
+          "hours"
+        ],
+        "title": "CustomAppliance",
+        "description": "Un aparato que no está en el catálogo."
+      },
+      "DailyErrorOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "Modelo que hizo la previsión publicada ese día"
+          },
+          "mae": {
+            "type": "number",
+            "title": "Mae"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "bias": {
+            "type": "number",
+            "title": "Bias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "model",
+          "mae",
+          "rmse",
+          "bias"
+        ],
+        "title": "DailyErrorOut"
+      },
+      "DayCostOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "pvpc_cost": {
+            "type": "number",
+            "title": "Pvpc Cost"
+          },
+          "fixed_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Cost"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "kwh",
+          "pvpc_cost",
+          "fixed_cost"
+        ],
+        "title": "DayCostOut"
+      },
+      "DaySummary": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "avg_price": {
+            "type": "number",
+            "title": "Avg Price"
+          },
+          "min_price": {
+            "type": "number",
+            "title": "Min Price"
+          },
+          "min_hour": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Min Hour",
+            "description": "Hora más barata"
+          },
+          "max_price": {
+            "type": "number",
+            "title": "Max Price"
+          },
+          "max_hour": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Max Hour",
+            "description": "Hora más cara"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete",
+            "description": "Si el día tiene todas sus horas publicadas"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastError"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Error de la previsión de ese día, si la hubo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "avg_price",
+          "min_price",
+          "min_hour",
+          "max_price",
+          "max_hour",
+          "complete",
+          "forecast"
+        ],
+        "title": "DaySummary"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "type": "array",
+            "title": "Details",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "message",
+          "type"
+        ],
+        "title": "FieldError"
+      },
+      "Forecast": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "\"lightgbm\" o la referencia usada como respaldo"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason",
+            "description": "Por qué se usó la referencia en lugar del modelo"
+          },
+          "unit": {
+            "type": "string",
+            "const": "€/MWh",
+            "title": "Unit",
+            "default": "€/MWh"
+          },
+          "mae": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae",
+            "description": "Error absoluto medio frente al precio real, cuando ya está publicado entero"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "description": "Aviso: la previsión es orientativa",
+            "default": "Previsión orientativa calculada por luzPreddict con datos de REE: no es un precio oficial ni garantiza el precio final."
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "generated_at",
+          "model",
+          "model_version",
+          "fallback_reason",
+          "mae",
+          "hours"
+        ],
+        "title": "Forecast"
+      },
+      "ForecastError": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "mae": {
+            "type": "number",
+            "title": "Mae",
+            "description": "Error absoluto medio en €/MWh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "mae"
+        ],
+        "title": "ForecastError"
+      },
+      "ForecastHour": {
+        "properties": {
+          "datetime": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Datetime",
+            "description": "Inicio de la hora, en hora de Madrid"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "description": "Precio previsto en €/MWh"
+          },
+          "period": {
+            "$ref": "#/components/schemas/TariffPeriod",
+            "description": "Periodo de la tarifa 2.0TD"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual",
+            "description": "Precio publicado por REE, si ya se conoce"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datetime",
+          "price",
+          "period",
+          "actual"
+        ],
+        "title": "ForecastHour"
+      },
+      "ForecastStatus": {
+        "properties": {
+          "target_day": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Day",
+            "description": "Día previsto"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "\"lightgbm\" o la referencia usada como respaldo"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason",
+            "description": "Por qué se usó la referencia en lugar del modelo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_day",
+          "generated_at",
+          "model",
+          "model_version",
+          "fallback_reason"
+        ],
+        "title": "ForecastStatus"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status",
+            "description": "\"degraded\" si los datos o el modelo están desactualizados"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Motivos por los que el estado no es ok"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/PricesStatus"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Última previsión generada"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Modelo en uso: el entrenado más recientemente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "checked_at",
+          "warnings",
+          "prices",
+          "forecast",
+          "model"
+        ],
+        "title": "Health"
+      },
+      "History": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "unit": {
+            "type": "string",
+            "const": "€/MWh",
+            "title": "Unit",
+            "default": "€/MWh"
+          },
+          "missing_days": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Missing Days",
+            "description": "Días del rango sin todas sus horas publicadas"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DaySummary"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "missing_days",
+          "days"
+        ],
+        "title": "History"
+      },
+      "LiveErrors": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DailyErrorOut"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "mae": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae",
+            "description": "Error absoluto medio de los días con previsión"
+          },
+          "fallback_days": {
+            "type": "integer",
+            "title": "Fallback Days",
+            "description": "Días en que se usó una referencia porque el modelo no estaba disponible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "days",
+          "mae",
+          "fallback_days"
+        ],
+        "title": "LiveErrors"
+      },
+      "LoadHour": {
+        "properties": {
+          "datetime": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Datetime"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "description": "€/kWh"
+          },
+          "kw": {
+            "type": "number",
+            "title": "Kw",
+            "description": "Potencia con el plan"
+          },
+          "habitual_kw": {
+            "type": "number",
+            "title": "Habitual Kw",
+            "description": "Potencia a las horas habituales"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datetime",
+          "price",
+          "kw",
+          "habitual_kw"
+        ],
+        "title": "LoadHour"
+      },
+      "Market": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "unit": {
+            "type": "string",
+            "const": "MWh",
+            "title": "Unit",
+            "default": "MWh"
+          },
+          "renewable_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Renewable Pct",
+            "description": "% renovable de todo el periodo"
+          },
+          "technologies": {
+            "items": {
+              "$ref": "#/components/schemas/TechnologyShare"
+            },
+            "type": "array",
+            "title": "Technologies",
+            "description": "Mix acumulado del periodo, de mayor a menor"
+          },
+          "missing_days": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Missing Days",
+            "description": "Días del rango sin datos de generación"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/MarketDay"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "Estructura de la generación"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "renewable_pct",
+          "technologies",
+          "missing_days",
+          "days"
+        ],
+        "title": "Market"
+      },
+      "MarketDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "total_mwh": {
+            "type": "number",
+            "title": "Total Mwh"
+          },
+          "renewable_mwh": {
+            "type": "number",
+            "title": "Renewable Mwh"
+          },
+          "renewable_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Renewable Pct",
+            "description": "% de la generación que fue renovable"
+          },
+          "provisional": {
+            "type": "boolean",
+            "title": "Provisional",
+            "description": "Datos de hoy: REE los actualiza hasta que acaba el día"
+          },
+          "mix": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Mix",
+            "description": "MWh por tecnología, de mayor a menor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "total_mwh",
+          "renewable_mwh",
+          "renewable_pct",
+          "provisional",
+          "mix"
+        ],
+        "title": "MarketDay"
+      },
+      "ModelInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "trained_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Trained At"
+          },
+          "train_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Train Start",
+            "description": "Primera hora con la que se entrenó"
+          },
+          "train_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Train End",
+            "description": "Última hora con la que se entrenó"
+          },
+          "training_rows": {
+            "type": "integer",
+            "title": "Training Rows"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params",
+            "description": "Hiperparámetros de LightGBM"
+          },
+          "library_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Library Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "trained_at",
+          "train_start",
+          "train_end",
+          "training_rows",
+          "features",
+          "params",
+          "library_versions"
+        ],
+        "title": "ModelInfo"
+      },
+      "ModelMetrics": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "\"lightgbm\" o el nombre de una referencia"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Nombre para mostrar"
+          },
+          "is_baseline": {
+            "type": "boolean",
+            "title": "Is Baseline"
+          },
+          "mae": {
+            "type": "number",
+            "title": "Mae",
+            "description": "Error absoluto medio, en €/MWh"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "bias": {
+            "type": "number",
+            "title": "Bias",
+            "description": "Error medio con signo (negativo: la previsión se queda corta)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "label",
+          "is_baseline",
+          "mae",
+          "rmse",
+          "bias"
+        ],
+        "title": "ModelMetrics"
+      },
+      "ModelReport": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo"
+          },
+          "backtest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Backtest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Métricas del entrenamiento (None en modelos sin métricas)"
+          },
+          "live": {
+            "$ref": "#/components/schemas/LiveErrors",
+            "description": "Error real de las previsiones publicadas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "backtest",
+          "live"
+        ],
+        "title": "ModelReport"
+      },
+      "ModelStatus": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "trained_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Trained At"
+          },
+          "train_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Train End",
+            "description": "Fin del periodo de entrenamiento"
+          },
+          "training_rows": {
+            "type": "integer",
+            "title": "Training Rows"
+          },
+          "age_days": {
+            "type": "integer",
+            "title": "Age Days",
+            "description": "Días desde el entrenamiento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "trained_at",
+          "train_end",
+          "training_rows",
+          "age_days"
+        ],
+        "title": "ModelStatus"
+      },
+      "PeriodOut": {
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/TariffPeriod"
+          },
+          "kwh": {
+            "type": "number",
+            "title": "Kwh"
+          },
+          "cost": {
+            "type": "number",
+            "title": "Cost"
+          },
+          "avg_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Price",
+            "description": "€/kWh medio pagado en el tramo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "kwh",
+          "cost",
+          "avg_price"
+        ],
+        "title": "PeriodOut"
+      },
+      "Plan": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "power_kw": {
+            "type": "number",
+            "title": "Power Kw"
+          },
+          "base_load_kw": {
+            "type": "number",
+            "title": "Base Load Kw"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedTaskOut"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "plan_cost": {
+            "type": "number",
+            "title": "Plan Cost",
+            "description": "€ de las tareas colocadas"
+          },
+          "habitual_cost": {
+            "type": "number",
+            "title": "Habitual Cost",
+            "description": "€ de todas las tareas a su hora habitual"
+          },
+          "saving": {
+            "type": "number",
+            "title": "Saving",
+            "description": "€ ahorrados en las tareas colocadas"
+          },
+          "unplaced": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unplaced",
+            "description": "Tareas que no caben"
+          },
+          "habitual_overloads": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "title": "Habitual Overloads",
+            "description": "Horas en que el horario habitual supera la potencia"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/LoadHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "power_kw",
+          "base_load_kw",
+          "tasks",
+          "plan_cost",
+          "habitual_cost",
+          "saving",
+          "unplaced",
+          "habitual_overloads",
+          "hours"
+        ],
+        "title": "Plan"
+      },
+      "PlanRequest": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "description": "Día (por defecto, el último publicado)"
+          },
+          "power_kw": {
+            "type": "number",
+            "maximum": 15.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Power Kw",
+            "description": "Potencia contratada, en kW",
+            "default": 4.6
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskIn"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Tasks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tasks"
+        ],
+        "title": "PlanRequest"
+      },
+      "PlannedTaskOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "appliance": {
+            "$ref": "#/components/schemas/ApplianceOut"
+          },
+          "fixed": {
+            "type": "boolean",
+            "title": "Fixed"
+          },
+          "placed": {
+            "type": "boolean",
+            "title": "Placed",
+            "description": "False si no cabe en ningún sitio sin superar la potencia"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "habitual_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Habitual Start"
+          },
+          "habitual_cost": {
+            "type": "number",
+            "title": "Habitual Cost"
+          },
+          "saving": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saving"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "appliance",
+          "fixed",
+          "placed",
+          "start",
+          "end",
+          "cost",
+          "habitual_start",
+          "habitual_cost",
+          "saving"
+        ],
+        "title": "PlannedTaskOut"
+      },
+      "PriceHour": {
+        "properties": {
+          "datetime": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Datetime",
+            "description": "Inicio de la hora, en hora de Madrid"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price",
+            "description": "PVPC en €/MWh"
+          },
+          "period": {
+            "$ref": "#/components/schemas/TariffPeriod",
+            "description": "Periodo de la tarifa 2.0TD"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datetime",
+          "price",
+          "period"
+        ],
+        "title": "PriceHour"
+      },
+      "PriceWindow": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "avg_price": {
+            "type": "number",
+            "title": "Avg Price",
+            "description": "Precio medio de la ventana, en €/kWh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "avg_price"
+        ],
+        "title": "PriceWindow"
+      },
+      "Prices": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "unit": {
+            "type": "string",
+            "const": "€/MWh",
+            "title": "Unit",
+            "default": "€/MWh"
+          },
+          "missing_days": {
+            "items": {
+              "type": "string",
+              "format": "date"
+            },
+            "type": "array",
+            "title": "Missing Days",
+            "description": "Días del rango sin todas sus horas publicadas"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/PriceHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "missing_days",
+          "hours"
+        ],
+        "title": "Prices"
+      },
+      "PricesStatus": {
+        "properties": {
+          "last_hour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Hour",
+            "description": "Inicio de la última hora con precio publicado"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day",
+            "description": "Último día con precio publicado"
+          },
+          "has_tomorrow": {
+            "type": "boolean",
+            "title": "Has Tomorrow",
+            "description": "Si REE ya ha publicado los precios de mañana"
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_hour",
+          "last_day",
+          "has_tomorrow"
+        ],
+        "title": "PricesStatus"
+      },
+      "ProfileOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "ProfileOut"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "from_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "From Hour",
+            "description": "Primera hora en la que puede empezar",
+            "default": 0
+          },
+          "to_hour": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "To Hour",
+            "description": "Hora a la que debe haber terminado",
+            "default": 24
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "description": "Día (por defecto, el último publicado)"
+          },
+          "appliance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/CustomAppliance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appliance",
+            "description": "Id del catálogo o aparato propio; sin él, se comparan todos los del catálogo"
+          },
+          "start_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Start Hour",
+            "description": "Hora a la que se usaría sin planificar",
+            "default": 20
+          },
+          "uses_per_week": {
+            "type": "number",
+            "maximum": 21.0,
+            "minimum": 0.0,
+            "title": "Uses Per Week",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "title": "SimulateRequest"
+      },
+      "Simulation": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "uses_per_week": {
+            "type": "number",
+            "title": "Uses Per Week"
+          },
+          "simulations": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationOut"
+            },
+            "type": "array",
+            "title": "Simulations"
+          },
+          "total_yearly_saving": {
+            "type": "number",
+            "title": "Total Yearly Saving",
+            "description": "Suma del ahorro anual de todos los aparatos simulados"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source",
+            "description": "Fuente de los datos",
+            "default": {
+              "name": "Red Eléctrica (REE)",
+              "url": "https://www.ree.es/es/apidatos",
+              "series": "PVPC 2.0TD"
+            }
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "uses_per_week",
+          "simulations",
+          "total_yearly_saving"
+        ],
+        "title": "Simulation"
+      },
+      "SimulationOut": {
+        "properties": {
+          "appliance": {
+            "$ref": "#/components/schemas/ApplianceOut"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start",
+            "description": "Inicio a la hora habitual (adelantado si no cabe en el día)"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "cost": {
+            "type": "number",
+            "title": "Cost",
+            "description": "€ a la hora habitual"
+          },
+          "best": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceWindow"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mejor ventana dentro de la franja"
+          },
+          "best_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Cost",
+            "description": "€ en la mejor ventana"
+          },
+          "saving_per_use": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saving Per Use"
+          },
+          "yearly_saving": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearly Saving",
+            "description": "€ al año con `uses_per_week` usos por semana"
+          }
+        },
+        "type": "object",
+        "required": [
+          "appliance",
+          "start",
+          "end",
+          "cost",
+          "best",
+          "best_cost",
+          "saving_per_use",
+          "yearly_saving"
+        ],
+        "title": "SimulationOut"
+      },
+      "Source": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Organismo que publica los datos",
+            "default": "Red Eléctrica (REE)"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "API pública de la que se descargan",
+            "default": "https://www.ree.es/es/apidatos"
+          },
+          "series": {
+            "type": "string",
+            "title": "Series",
+            "description": "Serie de datos de REE"
+          }
+        },
+        "type": "object",
+        "required": [
+          "series"
+        ],
+        "title": "Source",
+        "description": "De dónde salen los datos de la respuesta."
+      },
+      "TariffPeriod": {
+        "type": "string",
+        "enum": [
+          "punta",
+          "llano",
+          "valle"
+        ],
+        "title": "TariffPeriod"
+      },
+      "TaskIn": {
+        "properties": {
+          "from_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "From Hour",
+            "description": "Primera hora en la que puede empezar",
+            "default": 0
+          },
+          "to_hour": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "To Hour",
+            "description": "Hora a la que debe haber terminado",
+            "default": 24
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Id",
+            "description": "Identificador único de la tarea"
+          },
+          "appliance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/CustomAppliance"
+              }
+            ],
+            "title": "Appliance"
+          },
+          "habitual_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Habitual Hour",
+            "description": "Hora a la que se haría sin planificar"
+          },
+          "fixed": {
+            "type": "boolean",
+            "title": "Fixed",
+            "description": "Si no se puede mover de su hora habitual",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "appliance",
+          "habitual_hour"
+        ],
+        "title": "TaskIn"
+      },
+      "TechnologyShare": {
+        "properties": {
+          "technology": {
+            "type": "string",
+            "title": "Technology",
+            "description": "Nombre de la tecnología según REE"
+          },
+          "mwh": {
+            "type": "number",
+            "title": "Mwh"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct",
+            "description": "% del total generado en el periodo"
+          },
+          "renewable": {
+            "type": "boolean",
+            "title": "Renewable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "technology",
+          "mwh",
+          "pct",
+          "renewable"
+        ],
+        "title": "TechnologyShare"
+      },
+      "Window": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start",
+            "description": "Inicio de la primera hora, en hora de Madrid"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End",
+            "description": "Fin de la última hora"
+          },
+          "avg_price": {
+            "type": "number",
+            "title": "Avg Price",
+            "description": "Precio medio de la ventana en €/MWh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "avg_price"
+        ],
+        "title": "Window"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Precios",
+      "description": "PVPC publicado por REE"
+    },
+    {
+      "name": "Previsión",
+      "description": "Previsión del PVPC del día siguiente"
+    },
+    {
+      "name": "Mercado",
+      "description": "Mix de generación y peso renovable"
+    },
+    {
+      "name": "Herramientas",
+      "description": "Simulador, planificador y factura (uso interno de la web)"
+    },
+    {
+      "name": "Estado",
+      "description": "Estado del servicio y frescura de los datos"
+    }
+  ]
+}

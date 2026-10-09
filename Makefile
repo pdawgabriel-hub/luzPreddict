@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test migrate backfill pipeline backtest train predict api web web-build dev clean
+.PHONY: help install lint format test migrate backfill pipeline backtest train predict api api-types web web-mocks web-build dev clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -22,8 +22,9 @@ format: ## Corrige y formatea el código con ruff
 	$(PYTHON) -m ruff check --fix .
 	$(PYTHON) -m ruff format .
 
-test: ## Ejecuta los tests
+test: ## Ejecuta los tests de Python (pytest) y de la web (Vitest)
 	$(PYTHON) -m pytest
+	npm --prefix frontend test
 
 migrate: ## Aplica las migraciones pendientes a la base de datos de DATABASE_URL
 	$(PYTHON) -m alembic upgrade head
@@ -46,8 +47,15 @@ predict: ## Muestra la previsión del primer día sin precio publicado (sin guar
 api: ## Arranca la API en http://localhost:8000 (documentación en /docs)
 	$(PYTHON) -m uvicorn src.api.main:app --reload --port 8000 --no-access-log
 
+api-types: ## Regenera el esquema OpenAPI y los tipos de TypeScript de la web
+	$(PYTHON) -m src.api.openapi frontend/src/api/openapi.json
+	cd frontend && npx --yes openapi-typescript@7.13.0 src/api/openapi.json -o src/api/schema.d.ts
+
 web: ## Arranca la web en http://localhost:5173 (reenvía /api, /v1 y /health a la API)
 	npm --prefix frontend run dev
+
+web-mocks: ## Arranca la web con datos de ejemplo, sin API ni base de datos
+	npm --prefix frontend run dev:mocks
 
 web-build: ## Compila la web para producción en frontend/dist
 	npm --prefix frontend run build
