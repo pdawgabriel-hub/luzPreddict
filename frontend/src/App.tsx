@@ -23,10 +23,13 @@ export default function App() {
   }, [])
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 640, margin: '48px auto', padding: '0 16px' }}>
-      <h1>luzPreddict</h1>
-      <p>Precio de la luz (PVPC) y previsión para mañana. Web en construcción.</p>
-      <p role="status">
+    <main className="container" style={{ paddingBlock: 'var(--space-8) var(--space-14)', display: 'grid', gap: 'var(--space-6)' }}>
+      <div style={{ display: 'grid', gap: 'var(--space-1)' }}>
+        <p className="eyebrow">PVPC · Península</p>
+        <h1>luzPreddict</h1>
+        <p className="muted">Precio de la luz (PVPC) y previsión para mañana. Web en construcción.</p>
+      </div>
+      <p role="status" className="card">
         {api.kind === 'loading' && 'Conectando con la API…'}
         {api.kind === 'ok' &&
           `${usingMocks() ? 'Datos de ejemplo' : 'API conectada'} (${api.health.status}). ` +

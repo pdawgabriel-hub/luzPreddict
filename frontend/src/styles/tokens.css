@@ -1,0 +1,142 @@
+/*
+ * Tokens de diseño de luzPreddict, sacados del prototipo.
+ *
+ * Los nombres dicen para qué sirve cada valor (texto, superficie, barato, caro…),
+ * no qué color es: las páginas usan siempre estas variables, nunca códigos sueltos.
+ * Las parejas de texto y fondo cumplen el contraste AA (lo comprueba tokens.test.ts).
+ */
+
+:root {
+  /* --- Superficies --- */
+  --color-bg: #f2f4f6; /* fondo de la página */
+  --color-surface: #ffffff; /* tarjetas y secciones */
+  --color-surface-muted: #f7f8fa; /* elementos en pausa o secundarios */
+  --color-surface-sunken: #eef1f4; /* bloques de código claros, separadores de tabla */
+  --color-border: #dde2e8;
+  /* Campos y botones secundarios. El prototipo usaba #a9b4c2 (2,1:1 sobre blanco); se oscurece
+     para llegar al 3:1 que pide WCAG 1.4.11 para el borde de un campo */
+  --color-border-strong: #7d8899;
+
+  /* --- Texto --- */
+  --color-text: #0e1726;
+  --color-text-muted: #4a5565;
+
+  /* --- Zona oscura: cabecera, tarjeta del precio actual, código --- */
+  --color-inverse: #0e1726;
+  --color-inverse-raised: #22304a; /* enlace activo o con el ratón encima */
+  --color-text-inverse: #ffffff;
+  --color-text-inverse-muted: #c9d2de;
+  --color-code-inverse: #e8edf3;
+
+  /* --- Marca y acción --- */
+  --color-accent: #1f4e9c; /* enlaces, botones principales, foco */
+  --color-accent-strong: #173d7a;
+  --color-accent-soft: #e3ecf8;
+  --color-brand: #f2a516; /* rayo del logo y etiqueta "hora cara" */
+  --color-brand-soft: #fff6e3; /* avisos y consejos */
+
+  /* --- Estados: barato / caro / correcto / error (fondo suave + texto oscuro) --- */
+  --color-cheap-bg: #e3ecf8;
+  --color-cheap-text: #173d7a;
+  --color-expensive-bg: #fff0d6;
+  --color-expensive-text: #8a4b00;
+  --color-success-bg: #ddf1e6;
+  --color-success-text: #1c5a3e;
+  --color-danger-bg: #fbe3e0;
+  --color-danger-text: #a12a1e;
+
+  /* --- Periodos de la tarifa 2.0TD --- */
+  --color-period-punta: #b86a00;
+  --color-period-llano: #e99a1e;
+  --color-period-valle: #4f82d6;
+
+  /* --- Gráficos --- */
+  /* Escala de precio publicado (de barato a caro) */
+  --color-price-1: #e3ecf8;
+  --color-price-2: #a9c4eb;
+  --color-price-3: #6f9be0;
+  --color-price-4: #3767b8;
+  --color-price-5: #173d7a;
+  /* Escala de la previsión: tonos ámbar para distinguirla del precio publicado */
+  --color-forecast-1: #f8d48a;
+  --color-forecast-2: #e99a1e;
+  --color-forecast-3: #8a4b00;
+  --color-chart-line: #1f4e9c;
+  --color-chart-band: #d6e2f5; /* banda mínimo–máximo */
+  --color-chart-error: #fce3b5; /* área de diferencia entre previsión y real */
+  --color-chart-axis: #0e1726;
+  --color-chart-neutral: #6b7280;
+  --color-chart-positive: #2e7d5b;
+
+  /* Tecnologías de generación */
+  --color-tech-wind: #2e7d5b;
+  --color-tech-solar: #7cc4a0;
+  --color-tech-hydro: #4f82d6;
+  --color-tech-other-renewable: #a9c4eb;
+  --color-tech-nuclear: #4a5565;
+  --color-tech-gas: #e99a1e;
+  --color-tech-other: #a9b4c2;
+
+  /* --- Tipografía --- */
+  --font-display: 'Space Grotesk', system-ui, sans-serif; /* títulos */
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif; /* texto */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* precios y código */
+
+  --text-2xs: 0.6875rem; /* 11px: ejes de gráficos */
+  --text-xs: 0.75rem; /* 12px: etiquetas */
+  --text-sm: 0.8125rem; /* 13px: textos secundarios */
+  --text-md: 0.875rem; /* 14px: formularios, tablas */
+  --text-base: 0.9375rem; /* 15px: texto */
+  --text-lg: 1.125rem; /* 18px: títulos de sección */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.375rem; /* 22px: cifras medianas */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.125rem; /* 34px: cifras de las tarjetas */
+  --text-5xl: 2.25rem; /* 36px: título de la página */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.1;
+  --leading-heading: 1.15;
+  --leading-body: 1.5;
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.01em;
+  --tracking-caps: 0.08em; /* etiquetas en mayúsculas */
+
+  /* --- Espaciado (múltiplos de 2px; el nombre es px / 4) --- */
+  --space-0-5: 0.125rem; /* 2px */
+  --space-1: 0.25rem; /* 4px */
+  --space-1-5: 0.375rem; /* 6px */
+  --space-2: 0.5rem; /* 8px */
+  --space-2-5: 0.625rem; /* 10px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-14: 3.5rem; /* 56px */
+
+  /* --- Bordes redondeados --- */
+  --radius-xs: 3px; /* barras de gráficos */
+  --radius-sm: 4px;
+  --radius-md: 8px; /* enlaces de navegación */
+  --radius-lg: 10px; /* botones y campos */
+  --radius-xl: 14px; /* tarjetas */
+  --radius-2xl: 16px; /* secciones */
+  --radius-pill: 999px; /* etiquetas */
+
+  /* --- Maquetación --- */
+  --container-max: 1240px;
+  --gutter: var(--space-6);
+  --touch-target: 44px; /* tamaño mínimo de lo que se pulsa */
+  --focus-ring: 2px solid var(--color-accent);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --gutter: var(--space-4);
+  }
+}
