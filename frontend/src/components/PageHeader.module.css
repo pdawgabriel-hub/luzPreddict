@@ -1,0 +1,21 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.text {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 70ch;
+}
+
+.intro {
+  margin-top: var(--space-1);
+}
+
+.aside {
+  font-size: var(--text-sm);
+}

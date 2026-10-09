@@ -1,0 +1,34 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: var(--space-8) var(--space-14);
+}
+
+.main:focus {
+  outline: none;
+}
+
+/* Visible solo al llegar con el teclado */
+.skipLink {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: 10;
+  padding: var(--space-2-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-brand);
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+
+.skipLink:focus {
+  top: var(--space-2);
+}
