@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.api.cache import next_refresh, seconds_until_refresh
 from src.db import repository
-from tests.test_api_prices import NOW, TODAY, make_client, save_prices, save_run
+from tests.api_helpers import NOW, TODAY, make_client, save_prices, save_run
 
 
 def utc(hour, minute=0, day=6):

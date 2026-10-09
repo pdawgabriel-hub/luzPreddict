@@ -5,16 +5,7 @@ import pytest
 from src.api.deps import DEFAULT_HISTORY_DAYS, MAX_HISTORY_DAYS
 from src.db import repository
 from src.utils.calendar import local_day_hours
-from tests.test_api_prices import NOW, TODAY, TOMORROW, error_fields, make_client, save_prices
-
-# Día con la madrugada barata (3:00 a 5:00) y una hora suelta muy barata a las 15:00
-PROFILE = [100.0] * 24
-PROFILE[3:6] = [20.0, 10.0, 30.0]
-PROFILE[15] = 5.0
-
-
-def save_profile(session, day, profile=PROFILE):
-    repository.upsert_prices(session, list(zip(local_day_hours(day), profile, strict=True)))
+from tests.api_helpers import NOW, PROFILE, TODAY, TOMORROW, error_fields, make_client, save_prices, save_profile
 
 
 @pytest.fixture

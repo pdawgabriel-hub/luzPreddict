@@ -8,8 +8,7 @@ from src.services.planner import BASE_LOAD_KW, CONTRACTED_POWERS_KW
 from src.services.simulator import APPLIANCES
 from src.services.tariffs import PROFILES
 from src.utils.calendar import local_day_hours
-from tests.test_api_best_hours_history import PROFILE, save_profile
-from tests.test_api_prices import TODAY, TOMORROW, make_client
+from tests.api_helpers import PROFILE, TODAY, TOMORROW, make_client, save_profile
 
 LAVADORA = APPLIANCES["lavadora"]  # 0,5 kW durante 2 h
 

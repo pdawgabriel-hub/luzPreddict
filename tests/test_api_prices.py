@@ -1,55 +1,14 @@
-from datetime import UTC, date, datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 
-from src.api import deps
 from src.api.deps import MAX_RANGE_DAYS
-from src.api.main import create_app
-from src.db import repository
-from src.utils.calendar import local_day_hours
-from src.utils.config import Settings
-
-MADRID = ZoneInfo("Europe/Madrid")
-TODAY = date(2026, 10, 6)  # martes
-TOMORROW = TODAY + timedelta(days=1)
-NOW = datetime(2026, 10, 6, 20, 30, tzinfo=MADRID).astimezone(UTC)
-
-
-def save_prices(session, *days, price=100.0, skip_last=0):
-    for day in days:
-        hours = local_day_hours(day)
-        repository.upsert_prices(session, [(ts, price + i) for i, ts in enumerate(hours[: len(hours) - skip_last])])
-
-
-def save_run(session, day, prediction=90.0, minutes_ago=5, model="lightgbm"):
-    repository.save_forecast(
-        session,
-        repository.ForecastToSave(
-            target_day=day,
-            generated_at=NOW - timedelta(minutes=minutes_ago),
-            model=model,
-            hours=[(ts, prediction) for ts in local_day_hours(day)],
-        ),
-    )
-
-
-def make_client(session, now=NOW):
-    app = create_app(Settings(_env_file=None))
-    app.dependency_overrides[deps.get_session] = lambda: session
-    app.dependency_overrides[deps.get_now] = lambda: now
-    return TestClient(app)
+from tests.api_helpers import NOW, TODAY, TOMORROW, error_fields, make_client, save_prices, save_run
 
 
 @pytest.fixture
 def client(db_session):
     return make_client(db_session)
-
-
-def error_fields(response):
-    assert response.status_code == 422
-    return {d["field"]: d["message"] for d in response.json()["error"]["details"]}
 
 
 # --- /v1/prices ---

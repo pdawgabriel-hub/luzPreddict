@@ -4,7 +4,7 @@ import pytest
 
 from src.api.schemas.common import FORECAST_DISCLAIMER, REE_URL
 from src.db import repository
-from tests.test_api_prices import TODAY, make_client, save_prices, save_run
+from tests.api_helpers import TODAY, make_client, save_prices, save_run
 
 PVPC = {"name": "Red Eléctrica (REE)", "url": REE_URL, "series": "PVPC 2.0TD"}
 GENERATION = {"name": "Red Eléctrica (REE)", "url": REE_URL, "series": "Estructura de la generación"}

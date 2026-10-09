@@ -4,7 +4,7 @@ import pytest
 
 from src.api.deps import DEFAULT_HISTORY_DAYS
 from src.db import repository
-from tests.test_api_prices import TODAY, error_fields, make_client
+from tests.api_helpers import TODAY, error_fields, make_client
 
 YESTERDAY = TODAY - timedelta(days=1)
 
