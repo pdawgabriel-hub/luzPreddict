@@ -124,6 +124,9 @@ class ForecastHour(Base):
     run_id: Mapped[int] = mapped_column(ForeignKey("model_run.id", ondelete="CASCADE"), primary_key=True)
     datetime: Mapped[datetime] = mapped_column(UTCDateTime, primary_key=True)
     prediction: Mapped[float] = mapped_column(Float)  # €/MWh
+    # Intervalo de predicción en €/MWh (vacío en el respaldo y en las previsiones anteriores a él)
+    lower: Mapped[float | None] = mapped_column(Float)
+    upper: Mapped[float | None] = mapped_column(Float)
 
     run: Mapped[ModelRun] = relationship(back_populates="hours")
 

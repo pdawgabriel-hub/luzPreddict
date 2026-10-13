@@ -13,7 +13,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from itertools import islice
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -123,12 +123,19 @@ def last_generation_date(session: Session) -> date | None:
 # --- Previsiones ---
 
 
+class HourToSave(NamedTuple):
+    datetime: datetime
+    prediction: float  # €/MWh
+    lower: float | None = None  # intervalo de predicción, si el modelo lo da
+    upper: float | None = None
+
+
 @dataclass(frozen=True)
 class ForecastToSave:
     target_day: date
     generated_at: datetime
     model: str
-    hours: Sequence[tuple[datetime, float]]
+    hours: Sequence[HourToSave | tuple[datetime, float]]
     model_version: str | None = None
     fallback_reason: str | None = None
 
@@ -153,12 +160,13 @@ def save_forecast(session: Session, forecast: ForecastToSave) -> ModelRun:
     ).returning(ModelRun.id)
     run_id = session.execute(statement).scalar_one()
 
+    hours = (HourToSave(*hour) for hour in forecast.hours)
     _upsert(
         session,
         ForecastHour,
-        ({"run_id": run_id, "datetime": ts, "prediction": value} for ts, value in forecast.hours),
+        ({"run_id": run_id, **hour._asdict()} for hour in hours),
         ["run_id", "datetime"],
-        ["prediction"],
+        ["prediction", "lower", "upper"],
     )
     session.expire_all()
     return session.get(ModelRun, run_id, options=[selectinload(ModelRun.hours)])

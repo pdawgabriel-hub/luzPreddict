@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -103,6 +104,21 @@ def test_saving_the_same_run_twice_does_not_duplicate_it(db_session):
     assert second.id == first.id
     assert db_session.query(ModelRun).count() == 1
     assert [h.prediction for h in second.hours][:2] == [160.0, 161.0]
+
+
+def test_forecast_hours_keep_their_interval(db_session):
+    start = datetime(2026, 10, 6, 22, tzinfo=UTC)
+    hours = [repo.HourToSave(start, 150.0, 120.0, 190.0), repo.HourToSave(start + timedelta(hours=1), 140.0)]
+    forecast = dataclasses.replace(_forecast(), model="lightgbm", hours=hours)
+
+    run = repo.save_forecast(db_session, forecast)
+
+    assert [(h.prediction, h.lower, h.upper) for h in run.hours] == [(150.0, 120.0, 190.0), (140.0, None, None)]
+
+    # Al volver a guardar la ejecución con otro intervalo, se actualiza
+    hours[0] = repo.HourToSave(start, 150.0, 110.0, 200.0)
+    run = repo.save_forecast(db_session, dataclasses.replace(forecast, hours=hours))
+    assert (run.hours[0].lower, run.hours[0].upper) == (110.0, 200.0)
 
 
 def test_latest_forecast_is_the_most_recently_generated(db_session):

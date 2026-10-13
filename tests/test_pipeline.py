@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import timedelta
 
 import pytest
@@ -43,6 +44,8 @@ def test_daily_saves_a_forecast_for_the_first_unpublished_day(seeded, sessions, 
     assert run.id == result.run_id
     assert run.model_version == result.forecast.model_version
     assert len(run.hours) == 24
+    assert all(h.lower <= h.prediction <= h.upper for h in run.hours)
+    assert [h.lower for h in run.hours] == pytest.approx(result.forecast.lower.tolist())
 
 
 def test_daily_is_pending_when_tomorrow_is_not_published_yet(seeded, sessions):
@@ -53,6 +56,8 @@ def test_daily_is_pending_when_tomorrow_is_not_published_yet(seeded, sessions):
     assert result.status == "pendiente"
     assert result.forecast.day == LAST_DAY + timedelta(days=1)  # se prevé mañana igualmente
     assert result.forecast.model == "precio_ayer"  # no hay modelo guardado: respaldo
+    run = repository.latest_forecast(seeded, result.forecast.day)
+    assert all(h.lower is None and h.upper is None for h in run.hours)  # el respaldo no tiene intervalo
 
 
 def test_predict_command_needs_prices():
@@ -86,3 +91,23 @@ def test_a_changed_forecast_is_saved_as_a_new_run(seeded, sessions, fast_model):
 
     assert second.run_id != first.run_id
     assert repository.latest_forecast(seeded, second.forecast.day).model == "lightgbm"
+
+
+def test_a_forecast_whose_interval_changes_is_saved_as_a_new_run(seeded):
+    forecast = pipeline.forecast_next_day(seeded)  # respaldo: sin intervalo
+    first = pipeline.save_forecast(seeded, forecast)
+    assert pipeline.save_forecast(seeded, forecast) == first
+
+    with_interval = dataclasses.replace(
+        forecast,
+        generated_at=forecast.generated_at + timedelta(hours=2),
+        lower=forecast.prices - 10,
+        upper=forecast.prices + 10,
+    )
+    second = pipeline.save_forecast(seeded, with_interval)
+
+    assert second != first
+    assert pipeline.save_forecast(seeded, with_interval) == second
+    assert repository.latest_forecast(seeded, forecast.day).hours[0].upper == pytest.approx(
+        forecast.prices.iloc[0] + 10
+    )

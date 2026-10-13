@@ -113,7 +113,7 @@ def save_forecast(session: Session, forecast: Forecast) -> int:
     Si la última ejecución del día tiene el mismo modelo, versión y valores (por
     ejemplo, al repetir la tarea diaria), no se duplica: se devuelve esa.
     """
-    hours = list(zip(forecast.prices.index.to_pydatetime(), forecast.prices.astype(float), strict=True))
+    hours = _hours_to_save(forecast)
     latest = repository.latest_forecast(session, forecast.day)
     if latest is not None and _same_forecast(latest, forecast.model, forecast.model_version, hours):
         logger.info("La previsión del %s no ha cambiado: se mantiene la ejecución %d", forecast.day, latest.id)
@@ -133,12 +133,31 @@ def save_forecast(session: Session, forecast: Forecast) -> int:
     return run.id
 
 
-def _same_forecast(run, model: str, model_version: str | None, hours: list[tuple[datetime, float]]) -> bool:
-    saved = [(h.datetime, h.prediction) for h in run.hours]
+def _hours_to_save(forecast: Forecast) -> list[repository.HourToSave]:
+    index = forecast.prices.index
+    no_bound = [None] * len(index)
+    lower = forecast.lower.reindex(index).astype(float).tolist() if forecast.lower is not None else no_bound
+    upper = forecast.upper.reindex(index).astype(float).tolist() if forecast.upper is not None else no_bound
+    return [
+        repository.HourToSave(*hour)
+        for hour in zip(index.to_pydatetime(), forecast.prices.astype(float), lower, upper, strict=True)
+    ]
+
+
+def _same_value(a: float | None, b: float | None) -> bool:
+    return a is None and b is None or (a is not None and b is not None and abs(a - b) < 1e-6)
+
+
+def _same_forecast(run, model: str, model_version: str | None, hours: list[repository.HourToSave]) -> bool:
+    saved = [repository.HourToSave(h.datetime, h.prediction, h.lower, h.upper) for h in run.hours]
     return (
         (run.model, run.model_version) == (model, model_version)
-        and [ts for ts, _ in saved] == [ts for ts, _ in hours]
-        and all(abs(a - b) < 1e-6 for (_, a), (_, b) in zip(saved, hours, strict=True))
+        and [h.datetime for h in saved] == [h.datetime for h in hours]
+        and all(
+            _same_value(getattr(a, field), getattr(b, field))
+            for a, b in zip(saved, hours, strict=True)
+            for field in ("prediction", "lower", "upper")
+        )
     )
 
 
