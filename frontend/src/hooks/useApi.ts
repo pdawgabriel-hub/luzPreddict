@@ -27,8 +27,12 @@ export function useApi<T>(load: (signal: AbortSignal) => Promise<T>, deps: reado
 
   useEffect(() => {
     const controller = new AbortController()
+    // Lo que llegue de una petición ya cancelada (p. ej. al cambiar de periodo) se descarta,
+    // sea un resultado o un error: si no, pisaría los datos de la petición nueva
     load(controller.signal).then(
-      (data) => setResult({ key, data }),
+      (data) => {
+        if (!controller.signal.aborted) setResult({ key, data })
+      },
       (error: unknown) => {
         if (!controller.signal.aborted) setResult({ key, error: toApiError(error) })
       },
