@@ -12,6 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from src.api.cache import cache_until_refresh, no_store
 from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
+from src.api.rate_limit import LIMIT_HEADERS, build_rate_limiter, rate_limit
 from src.api.routers import health
 from src.api.routers.public import best_hours, forecast, history, market, prices
 from src.api.routers.web import model, tools
@@ -28,6 +29,9 @@ previsión del día siguiente y herramientas para decidir cuándo consumir.
 - Las horas van en **hora local de Madrid**, en formato ISO 8601 con desfase.
 - La previsión es **orientativa** y no garantiza el precio final.
 - Cada respuesta de `/v1` indica en `source` la serie de REE de la que salen sus datos.
+- Límite de **60 peticiones por minuto** e IP: las cabeceras `X-RateLimit-*` dicen cuántas
+  quedan y, al superarlo, la respuesta es un 429 con `Retry-After`. Las respuestas se pueden
+  guardar en caché hasta la siguiente actualización de los datos: no hace falta repetirlas.
 
 Datos: [API pública de REE](https://www.ree.es/es/apidatos).
 """
@@ -58,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         responses=error_responses(500),
     )
     register_error_handlers(app)
+    app.state.rate_limiter = build_rate_limiter(settings)
 
     # El último que se añade es el primero en recibir la petición:
     # id y logging -> CORS -> GZip -> rutas
@@ -67,7 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=settings.cors_origins,
         allow_methods=["GET"],  # API de solo lectura
         allow_headers=[REQUEST_ID_HEADER],
-        expose_headers=[REQUEST_ID_HEADER],
+        expose_headers=[REQUEST_ID_HEADER, *LIMIT_HEADERS],
         allow_credentials=False,  # sin usuarios ni cookies
         max_age=3600,
     )
@@ -80,14 +85,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router, dependencies=[Depends(no_store)])
 
     # API pública: las respuestas valen hasta la siguiente actualización de los datos
-    v1 = APIRouter(prefix="/v1", dependencies=[Depends(cache_until_refresh)])
+    limited = [Depends(rate_limit)]
+    v1 = APIRouter(prefix="/v1", dependencies=[*limited, Depends(cache_until_refresh)], responses=error_responses(429))
     for module in (prices, forecast, best_hours, history, market):
         v1.include_router(module.router)
     app.include_router(v1)
 
     # Uso interno de la web (mismo dominio). Las herramientas son POST: el CORS público solo admite GET
-    app.include_router(tools.router)
-    app.include_router(model.router)
+    app.include_router(tools.router, dependencies=limited, responses=error_responses(429))
+    app.include_router(model.router, dependencies=limited, responses=error_responses(429))
 
     return app
 

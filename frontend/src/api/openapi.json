@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "luzPreddict API",
-    "description": "\nPrecio de la luz (PVPC) en España: precios publicados por Red Eléctrica (REE),\nprevisión del día siguiente y herramientas para decidir cuándo consumir.\n\n- Los precios se dan en **€/MWh** (1 €/MWh = 0,001 €/kWh).\n- Las horas van en **hora local de Madrid**, en formato ISO 8601 con desfase.\n- La previsión es **orientativa** y no garantiza el precio final.\n- Cada respuesta de `/v1` indica en `source` la serie de REE de la que salen sus datos.\n\nDatos: [API pública de REE](https://www.ree.es/es/apidatos).\n",
+    "description": "\nPrecio de la luz (PVPC) en España: precios publicados por Red Eléctrica (REE),\nprevisión del día siguiente y herramientas para decidir cuándo consumir.\n\n- Los precios se dan en **€/MWh** (1 €/MWh = 0,001 €/kWh).\n- Las horas van en **hora local de Madrid**, en formato ISO 8601 con desfase.\n- La previsión es **orientativa** y no garantiza el precio final.\n- Cada respuesta de `/v1` indica en `source` la serie de REE de la que salen sus datos.\n- Límite de **60 peticiones por minuto** e IP: las cabeceras `X-RateLimit-*` dicen cuántas\n  quedan y, al superarlo, la respuesta es un 429 con `Retry-After`. Las respuestas se pueden\n  guardar en caché hasta la siguiente actualización de los datos: no hace falta repetirlas.\n\nDatos: [API pública de REE](https://www.ree.es/es/apidatos).\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -171,6 +171,16 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiadas peticiones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No encontrado",
             "content": {
@@ -236,6 +246,16 @@
           },
           "500": {
             "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
             "content": {
               "application/json": {
                 "schema": {
@@ -359,6 +379,16 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiadas peticiones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No encontrado",
             "content": {
@@ -443,6 +473,16 @@
           },
           "500": {
             "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
             "content": {
               "application/json": {
                 "schema": {
@@ -543,6 +583,16 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiadas peticiones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No encontrado",
             "content": {
@@ -593,6 +643,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -627,6 +687,16 @@
           },
           "500": {
             "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
             "content": {
               "application/json": {
                 "schema": {
@@ -696,6 +766,16 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiadas peticiones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No encontrado",
             "content": {
@@ -749,6 +829,16 @@
           },
           "500": {
             "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
             "content": {
               "application/json": {
                 "schema": {
@@ -817,6 +907,16 @@
           },
           "500": {
             "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Demasiadas peticiones",
             "content": {
               "application/json": {
                 "schema": {

@@ -1507,6 +1507,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Error interno del servidor */
             500: {
                 headers: {
@@ -1550,6 +1559,15 @@ export interface operations {
             };
             /** @description Parámetros no válidos */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Demasiadas peticiones */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1613,6 +1631,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Error interno del servidor */
             500: {
                 headers: {
@@ -1658,6 +1685,15 @@ export interface operations {
             };
             /** @description Parámetros no válidos */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Demasiadas peticiones */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1717,6 +1753,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Error interno del servidor */
             500: {
                 headers: {
@@ -1744,6 +1789,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Catalog"];
+                };
+            };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Error interno del servidor */
@@ -1790,6 +1844,15 @@ export interface operations {
             };
             /** @description Parámetros no válidos */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Demasiadas peticiones */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1848,6 +1911,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Error interno del servidor */
             500: {
                 headers: {
@@ -1899,6 +1971,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Demasiadas peticiones */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Error interno del servidor */
             500: {
                 headers: {
@@ -1942,6 +2023,15 @@ export interface operations {
             };
             /** @description Parámetros no válidos */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Demasiadas peticiones */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # Orígenes que pueden llamar a la API desde el navegador (en .env, separados por comas)
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
 
+    # Límite de peticiones por IP (Upstash Redis). Sin URL y token, desactivado
+    upstash_redis_rest_url: str | None = None
+    upstash_redis_rest_token: str | None = None
+    rate_limit_per_minute: int = Field(default=60, ge=1)
+
     @field_validator("timezone")
     @classmethod
     def _check_timezone(cls, value: str) -> str:
