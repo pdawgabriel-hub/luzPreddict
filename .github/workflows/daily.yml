@@ -1,0 +1,58 @@
+name: Tarea diaria
+
+# REE publica el PVPC de mañana hacia las 20:15 (hora de Madrid). El cron va en UTC:
+# 19:30 UTC son las 21:30 en verano y las 20:30 en invierno. La de las 21:30 UTC es el
+# reintento: la tarea es idempotente, así que si la primera salió bien no cambia nada.
+# Las horas de caducidad de la caché de la API (src/api/cache.py) dependen de estas.
+on:
+  schedule:
+    - cron: "30 19 * * *"
+    - cron: "30 21 * * *"
+  workflow_dispatch:
+
+# Los workflows que escriben en la base de datos esperan su turno en lugar de solaparse
+concurrency:
+  group: neon-database
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  daily:
+    name: Ingesta, previsión y error diario
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-pipeline.txt
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-pipeline.txt
+
+      # Por si hay una migración nueva que aún no se ha aplicado (no hace nada si está al día)
+      - name: Migraciones (Alembic)
+        run: python -m alembic upgrade head
+
+      # Escribe el resumen de la ejecución y deja `status` (completo o pendiente) como salida
+      - name: Tarea diaria
+        id: daily
+        run: python -m src.pipeline daily
+
+      - name: REE sigue sin publicar
+        if: steps.daily.outputs.status == 'pendiente' && github.event.schedule == '30 21 * * *'
+        run: |
+          echo "::warning::REE aún no ha publicado el PVPC de mañana en el último intento del día." \
+            "La web muestra la previsión hasta que lo publique; la tarea de mañana lo recogerá."

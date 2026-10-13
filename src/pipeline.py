@@ -9,10 +9,14 @@ Uso:
 La tarea diaria es idempotente: se puede repetir (por ejemplo, el reintento de
 las 21:30 UTC) sin duplicar datos ni previsiones. Si REE aún no ha publicado los precios de
 mañana, termina como "pendiente".
+
+En GitHub Actions, `daily` deja además un resumen en la página de la ejecución y su
+estado como salida del paso (`status`), para los pasos siguientes del workflow.
 """
 
 import argparse
 import logging
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -31,7 +35,7 @@ from src.models.registry import load_from_db, save_to_db
 from src.models.train import train_final_model
 from src.processing import dataset
 from src.processing.features import HISTORY_DAYS
-from src.utils.calendar import local_date, local_day_hours
+from src.utils.calendar import local_date, local_day_hours, market_timezone
 from src.utils.config import get_settings
 from src.utils.logging import configure_logging
 
@@ -208,6 +212,48 @@ def daily(
 # --- Línea de comandos ---
 
 
+def _hour_range(ts: pd.Timestamp) -> str:
+    tz = market_timezone()
+    return f"{ts.tz_convert(tz):%H}–{(ts + pd.Timedelta(hours=1)).tz_convert(tz):%H} h"
+
+
+def _mwh(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",") + " €/MWh"
+
+
+def github_summary(result: DailyResult) -> str:
+    """Resumen en Markdown de la tarea diaria, para la página de la ejecución en GitHub."""
+    forecast = result.forecast
+    cheapest, priciest = forecast.prices.idxmin(), forecast.prices.idxmax()
+    model = f"{forecast.model} {forecast.model_version}" if forecast.model_version else forecast.model
+    status = "✅ completo" if result.status == "completo" else "⏳ pendiente: REE aún no ha publicado mañana"
+    last_day = result.backfill.last_price_day
+    rows = [
+        ("Último día con precio", f"{last_day:%d/%m/%Y}" if last_day else "ninguno"),
+        ("Horas de PVPC nuevas o corregidas", str(result.backfill.prices_changed)),
+        ("Previsión", f"{forecast.day:%d/%m/%Y} ({len(forecast.prices)} h) · ejecución {result.run_id}"),
+        ("Modelo", model),
+        ("Media prevista", _mwh(forecast.prices.mean())),
+        ("Hora más barata", f"{_hour_range(cheapest)} · {_mwh(forecast.prices[cheapest])}"),
+        ("Hora más cara", f"{_hour_range(priciest)} · {_mwh(forecast.prices[priciest])}"),
+        ("Errores diarios actualizados", str(result.errors_updated)),
+    ]
+    lines = [f"### Tarea diaria · {status}", "", "| | |", "|---|---|", *(f"| {k} | {v} |" for k, v in rows)]
+    if forecast.used_fallback:
+        lines += ["", f"> ⚠️ Respaldo activado: {forecast.fallback_reason}"]
+    return "\n".join(lines) + "\n"
+
+
+def report_to_github(result: DailyResult) -> None:
+    """Fuera de GitHub Actions (sin sus variables de entorno) no hace nada."""
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a", encoding="utf-8") as file:
+            file.write(github_summary(result))
+    if output := os.environ.get("GITHUB_OUTPUT"):
+        with open(output, "a", encoding="utf-8") as file:
+            file.write(f"status={result.status}\nforecast_day={result.forecast.day.isoformat()}\n")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -233,6 +279,7 @@ def main(argv: list[str] | None = None) -> None:
             print_forecast(forecast_next_day(session, args.day))
     else:
         result = daily()
+        report_to_github(result)
         print_forecast(result.forecast)
         print(f"\nEstado: {result.status} · ejecución {result.run_id}", end=" · ")
         print(f"errores diarios actualizados: {result.errors_updated}")

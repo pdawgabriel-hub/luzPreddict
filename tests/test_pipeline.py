@@ -111,3 +111,42 @@ def test_a_forecast_whose_interval_changes_is_saved_as_a_new_run(seeded):
     assert repository.latest_forecast(seeded, forecast.day).hours[0].upper == pytest.approx(
         forecast.prices.iloc[0] + 10
     )
+
+
+# --- Informe para GitHub Actions ---
+
+
+def test_github_summary_describes_the_daily_task(seeded, sessions):
+    client = FakeReeClient(published_until=LAST_DAY)
+    result = pipeline.daily(client=client, today=LAST_DAY, session_factory=sessions)  # sin modelo: respaldo
+
+    summary = pipeline.github_summary(result)
+
+    assert summary.startswith("### Tarea diaria · ⏳ pendiente")
+    assert f"| Previsión | {result.forecast.day:%d/%m/%Y} (24 h) · ejecución {result.run_id} |" in summary
+    assert "| Modelo | precio_ayer |" in summary
+    assert "| Hora más barata | " in summary and " €/MWh |" in summary
+    assert "> ⚠️ Respaldo activado: LookupError" in summary
+    # Sin líneas vacías dentro de la tabla: la partirían en dos
+    table = summary.split("\n\n")[1]
+    assert all(line.startswith("|") for line in table.strip().splitlines())
+
+
+def test_daily_command_reports_to_github_only_inside_actions(seeded, sessions, monkeypatch, tmp_path, capsys):
+    client = FakeReeClient(published_until=LAST_DAY + timedelta(days=1))
+    result = pipeline.daily(client=client, today=LAST_DAY, session_factory=sessions)
+    monkeypatch.setattr(pipeline, "daily", lambda: result)
+    monkeypatch.setattr(pipeline, "configure_logging", lambda: None)
+
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    pipeline.main(["daily"])  # en local no escribe nada fuera de la consola
+    assert "Estado: completo" in capsys.readouterr().out
+
+    summary, output = tmp_path / "summary.md", tmp_path / "output"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    pipeline.main(["daily"])
+
+    assert summary.read_text(encoding="utf-8").startswith("### Tarea diaria · ✅ completo")
+    assert output.read_text(encoding="utf-8") == f"status=completo\nforecast_day={result.forecast.day.isoformat()}\n"
