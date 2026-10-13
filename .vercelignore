@@ -1,0 +1,17 @@
+# Lo que Vercel no necesita para construir la web ni la API.
+#
+# pyproject.toml solo configura pytest y ruff, y no lista dependencias: si Vercel lo
+# viera, lo preferiría a requirements.txt y la API se quedaría sin FastAPI.
+pyproject.toml
+
+# Pipeline, modelo y desarrollo: corren en GitHub Actions o en local, no en Vercel
+tests/
+notebooks/
+data/
+models/
+alembic/
+alembic.ini
+requirements-dev.txt
+requirements-pipeline.txt
+Dockerfile
+docker-compose.yml
