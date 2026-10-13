@@ -15,7 +15,8 @@ export type Series = {
 export type Band = { label: string; color: string; lower: (number | null)[]; upper: (number | null)[] }
 
 type Props = {
-  labels: string[] // eje X, uno por punto
+  labels: string[] // eje X, uno por punto (pueden ir vacíos para no saturar el eje)
+  tableLabels?: string[] // nombre completo de cada punto en la tabla accesible (por defecto, `labels`)
   series: Series[]
   ariaLabel: string
   formatTick: (value: number) => string
@@ -29,7 +30,7 @@ type Props = {
 const MARGIN = { top: 10, right: 8, bottom: 22, left: 44 }
 
 /** Líneas sobre un eje común (previsión frente a real, evolución diaria…). */
-export function LineChart({ labels, series, ariaLabel, formatTick, formatValue, band, height = 240, xLabel = 'Hora', zeroBased = false }: Props) {
+export function LineChart({ labels, tableLabels = labels, series, ariaLabel, formatTick, formatValue, band, height = 240, xLabel = 'Hora', zeroBased = false }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1)
   const plotHeight = height - MARGIN.top - MARGIN.bottom
@@ -86,7 +87,7 @@ export function LineChart({ labels, series, ariaLabel, formatTick, formatValue, 
       <DataTable
         caption={ariaLabel}
         columns={[xLabel, ...series.map((s) => s.label)]}
-        rows={labels.map((label, i) => [label, ...series.map((s) => (s.values[i] === null ? '—' : formatValue(s.values[i] as number)))])}
+        rows={tableLabels.map((label, i) => [label, ...series.map((s) => (s.values[i] === null ? '—' : formatValue(s.values[i] as number)))])}
       />
     </figure>
   )

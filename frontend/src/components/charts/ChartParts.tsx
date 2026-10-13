@@ -32,8 +32,9 @@ export function DataTable({ caption, columns, rows }: { caption: string; columns
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row[0]}>
+        {rows.map((row, index) => (
+          // Por posición: la primera celda puede repetirse (p. ej. la misma hora en varios días)
+          <tr key={index}>
             {row.map((cell, i) => (i === 0 ? <th key={i} scope="row">{cell}</th> : <td key={i}>{cell}</td>))}
           </tr>
         ))}
