@@ -1,8 +1,9 @@
 """Previsión del PVPC del día siguiente, hora a hora.
 
-Usa el modelo guardado (`make train`). Si no se puede usar, porque no existe,
+Usa el modelo guardado (`make train`), que da además un intervalo para cada
+hora. Si no se puede usar, porque no existe,
 es incompatible, falla o devuelve valores no válidos, se publica la referencia
-"precio de ayer" y se indica el motivo: siempre hay previsión.
+"precio de ayer" (sin intervalo) y se indica el motivo: siempre hay previsión.
 
 Uso:
     python -m src.models.predict                  # primer día sin precio publicado
@@ -40,6 +41,8 @@ class Forecast:
     model_version: str | None  # versión del modelo guardado (None si es una referencia)
     fallback_reason: str | None  # por qué no se usó el modelo (None si se usó)
     generated_at: datetime  # UTC
+    lower: pd.Series | None = None  # límites del intervalo, €/MWh (None si el modelo no lo da)
+    upper: pd.Series | None = None
 
     @property
     def used_fallback(self) -> bool:
@@ -69,13 +72,23 @@ def predict_day(
 
     try:
         artifact = artifact or load()
-        values = artifact.model.predict(features)
-        if not values.index.equals(features.index):
+        if hasattr(artifact.model, "predict_interval"):
+            table = artifact.model.predict_interval(features)
+        else:
+            table = artifact.model.predict(features).to_frame("prediction")
+        if not table.index.equals(features.index):
             raise ValueError("el modelo devolvió previsiones para otras horas")
-        if not np.isfinite(values.to_numpy(dtype=float)).all():
+        if not np.isfinite(table.to_numpy(dtype=float)).all():
             raise ValueError("el modelo devolvió valores vacíos o infinitos")
         return Forecast(
-            day, values.rename("prediction"), artifact.model.name, artifact.metadata.version, None, generated_at
+            day,
+            table["prediction"].rename("prediction"),
+            artifact.model.name,
+            artifact.metadata.version,
+            None,
+            generated_at,
+            lower=table["lower"].rename("lower") if "lower" in table else None,
+            upper=table["upper"].rename("upper") if "upper" in table else None,
         )
     except Exception as exc:  # cualquier fallo del modelo activa el respaldo
         reason = f"{type(exc).__name__}: {exc}"
@@ -88,15 +101,31 @@ def predict_day(
 
 
 def forecast_table(forecast: Forecast) -> pd.DataFrame:
-    """La previsión por hora local, en €/MWh y €/kWh, para mostrarla."""
+    """La previsión por hora local, en €/MWh y €/kWh, y su intervalo en €/MWh si lo hay."""
     local = forecast.prices.index.tz_convert(market_timezone())
-    return pd.DataFrame(
+    table = pd.DataFrame(
         {
             "hora": local.strftime("%H:%M"),
             "€/MWh": forecast.prices.to_numpy(),
             "€/kWh": forecast.prices.to_numpy() / 1000,
         }
     )
+    if forecast.lower is not None and forecast.upper is not None:
+        table["desde"] = forecast.lower.to_numpy()
+        table["hasta"] = forecast.upper.to_numpy()
+    return table
+
+
+def print_forecast(forecast: Forecast) -> None:
+    source = f"{forecast.model} {forecast.model_version}" if forecast.model_version else forecast.model
+    print(f"\nPrevisión del PVPC para el {forecast.day:%d/%m/%Y} ({source})")
+    if forecast.used_fallback:
+        print(f"Respaldo activado: {forecast.fallback_reason}")
+    table = forecast_table(forecast)
+    mwh = "{:.1f}".format
+    print(table.to_string(index=False, formatters={"€/MWh": mwh, "€/kWh": "{:.3f}".format, "desde": mwh, "hasta": mwh}))
+    cheapest = table.loc[table["€/MWh"].idxmin()]
+    print(f"\nMedia {table['€/MWh'].mean():.1f} €/MWh · hora más barata {cheapest['hora']} ({cheapest['€/MWh']:.1f})")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -105,16 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     configure_logging()
-    forecast = predict_day(clean_prices(load_pvpc()), args.day)
-
-    source = f"{forecast.model} {forecast.model_version}" if forecast.model_version else forecast.model
-    print(f"\nPrevisión del PVPC para el {forecast.day:%d/%m/%Y} ({source})")
-    if forecast.used_fallback:
-        print(f"Respaldo activado: {forecast.fallback_reason}")
-    table = forecast_table(forecast)
-    print(table.to_string(index=False, formatters={"€/MWh": "{:.1f}".format, "€/kWh": "{:.3f}".format}))
-    cheapest = table.loc[table["€/MWh"].idxmin()]
-    print(f"\nMedia {table['€/MWh'].mean():.1f} €/MWh · hora más barata {cheapest['hora']} ({cheapest['€/MWh']:.1f})")
+    print_forecast(predict_day(clean_prices(load_pvpc()), args.day))
 
 
 if __name__ == "__main__":

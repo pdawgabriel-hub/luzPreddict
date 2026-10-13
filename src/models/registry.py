@@ -26,7 +26,8 @@ from src.db import repository
 from src.processing.features import FEATURES
 from src.utils.config import get_settings
 
-FORMAT_VERSION = 1
+# 2: el modelo incluye los de cuantiles del intervalo de predicción
+FORMAT_VERSION = 2
 MODEL_FILENAME = "lightgbm.joblib"
 METADATA_FILENAME = "lightgbm.json"
 

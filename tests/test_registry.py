@@ -73,6 +73,7 @@ def test_roundtrip_keeps_predictions_and_metadata(artifact, features):
 
     assert restored.metadata == artifact.metadata
     pd.testing.assert_series_equal(restored.model.predict(features), artifact.model.predict(features))
+    pd.testing.assert_frame_equal(restored.model.predict_interval(features), artifact.model.predict_interval(features))
 
 
 def test_serialized_model_is_compact(artifact):
@@ -118,7 +119,13 @@ def test_fit_command_trains_and_saves_with_metrics(monkeypatch, tmp_path, capsys
     meta = load_artifact(tmp_path).metadata
     assert meta.metrics["period"]["days"] == 7
     assert set(meta.metrics["models"]) == {"lightgbm", "precio_ayer", "media_7_dias"}
-    assert "guardado en" in capsys.readouterr().out
+    interval = meta.metrics["interval"]
+    assert interval["level"] == 0.8
+    assert 0 <= interval["coverage"] <= 1 and interval["width"] > 0
+    assert interval["n"] == 7 * 24
+    out = capsys.readouterr().out
+    assert "guardado en" in out
+    assert "Intervalo del 80%" in out
 
 
 def test_metrics_period_is_shortened_when_there_is_little_history(monkeypatch):

@@ -33,6 +33,23 @@ def regression_metrics(y_true: pd.Series, y_pred: pd.Series) -> dict[str, float]
     }
 
 
+def interval_metrics(y_true: pd.Series, lower: pd.Series, upper: pd.Series) -> dict[str, float]:
+    """Cobertura (fracción de horas con el precio real dentro del intervalo) y anchura media.
+
+    Un intervalo del 80 % bien calibrado tiene una cobertura cercana a 0,8; entre
+    dos igual de calibrados, es mejor el más estrecho.
+    """
+    rows = pd.DataFrame({"true": y_true, "lower": lower, "upper": upper}).dropna()
+    if rows.empty:
+        return {"coverage": np.nan, "width": np.nan, "n": 0}
+    inside = rows["true"].between(rows["lower"], rows["upper"])
+    return {
+        "coverage": float(inside.mean()),
+        "width": float((rows["upper"] - rows["lower"]).mean()),
+        "n": int(len(rows)),
+    }
+
+
 def metrics_by_group(y_true: pd.Series, y_pred: pd.Series, groups: pd.Series | pd.Index) -> pd.DataFrame:
     """Las mismas métricas por grupo (por ejemplo, por hora del día o por año)."""
     groups = pd.Series(np.asarray(groups), index=y_true.index, name=getattr(groups, "name", None))
@@ -69,11 +86,13 @@ def backtest(
     se le pasan con el precio vacío, igual que ocurrirá en producción. Se entrena
     antes del primer día y, si `refit_every_days` está definido, cada esos días.
 
-    Devuelve una fila por hora con `day` (día local), `price` (real) y `prediction`.
+    Devuelve una fila por hora con `day` (día local), `price` (real) y `prediction`,
+    más `lower` y `upper` si el modelo da intervalo (`predict_interval`).
     """
     if start > end:
         raise ValueError(f"La fecha inicial ({start}) es posterior a la final ({end})")
 
+    predict_interval = getattr(forecaster, "predict_interval", None)
     results = []
     day, days_since_fit = start, None
     while day <= end:
@@ -85,16 +104,13 @@ def backtest(
             days_since_fit = 0
 
         features = features_for_day(prices, day, history_days)
+        if predict_interval is not None:
+            predicted = {k: v.to_numpy() for k, v in predict_interval(features).items()}
+        else:
+            predicted = {"prediction": forecaster.predict(features).to_numpy()}
 
         results.append(
-            pd.DataFrame(
-                {
-                    "day": day,
-                    "price": prices["price"].reindex(day_hours),
-                    "prediction": forecaster.predict(features).to_numpy(),
-                },
-                index=day_hours,
-            )
+            pd.DataFrame({"day": day, "price": prices["price"].reindex(day_hours), **predicted}, index=day_hours)
         )
         day += timedelta(days=1)
         days_since_fit += 1

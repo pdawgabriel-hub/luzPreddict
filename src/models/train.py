@@ -4,7 +4,8 @@ Validación temporal en dos periodos, para no elegir la configuración mirando
 el resultado final:
 
 - Validación (2024): se compararon configuraciones y se eligió la de
-  `lightgbm_model.DEFAULT_PARAMS` y `TRAIN_DAYS` (objetivo L1 y últimos 2 años).
+  `lightgbm_model.DEFAULT_PARAMS` y `TRAIN_DAYS` (objetivo L1 y últimos 2 años),
+  y los percentiles del intervalo (`QUANTILES`).
 - Prueba (desde 2025): se evalúa la configuración elegida contra las referencias.
 
 Uso:
@@ -22,8 +23,8 @@ import pandas as pd
 
 from src.ingestion.prices import load_pvpc
 from src.models.baselines import BASELINES, BaselineForecaster
-from src.models.evaluate import Forecaster, backtest, regression_metrics
-from src.models.lightgbm_model import LightGBMForecaster
+from src.models.evaluate import Forecaster, backtest, interval_metrics, regression_metrics
+from src.models.lightgbm_model import INTERVAL_LEVEL, LightGBMForecaster
 from src.models.registry import ModelArtifact, build_metadata, save_artifact
 from src.processing.clean import clean_prices
 from src.processing.features import build_features
@@ -69,6 +70,17 @@ def compare_models(
     return summary.rename_axis("modelo"), results
 
 
+def interval_summary(results: pd.DataFrame) -> dict[str, float]:
+    """Cobertura anunciada, cobertura real y anchura media del intervalo en un backtest."""
+    metrics = interval_metrics(results["price"], results["lower"], results["upper"])
+    return {
+        "level": INTERVAL_LEVEL,
+        "coverage": round(metrics["coverage"], 3),
+        "width": round(metrics["width"], 2),
+        "n": metrics["n"],
+    }
+
+
 def train_final_model(
     prices: pd.DataFrame,
     metrics_days: int = METRICS_DAYS,
@@ -77,7 +89,8 @@ def train_final_model(
     """Entrena LightGBM con todos los precios conocidos y lo acompaña de sus métricas.
 
     Las métricas salen de un backtest de los últimos `metrics_days` días, de
-    LightGBM y de las referencias, para saber cuánto mejora el modelo guardado.
+    LightGBM y de las referencias, para saber cuánto mejora el modelo guardado,
+    y de la cobertura de su intervalo.
     Si no hay tanta historia, el periodo empieza en cuanto hay una semana de datos.
     """
     known = prices["price"].dropna()
@@ -86,15 +99,23 @@ def train_final_model(
     if start > last_day:
         raise ValueError(f"Hacen falta al menos {MIN_HISTORY_DAYS + 1} días de precios para entrenar y medir el modelo")
     metrics_days = (last_day - start).days + 1
-    summary, _ = compare_models(prices, start, last_day, refit_every_days=refit_every_days)
+    summary, results = compare_models(prices, start, last_day, refit_every_days=refit_every_days)
     metrics = {
         "period": {"start": start.isoformat(), "end": last_day.isoformat(), "days": metrics_days},
         "models": {name: {k: round(float(v), 2) for k, v in row.items()} for name, row in summary.iterrows()},
+        "interval": interval_summary(results[LightGBMForecaster.name]),
     }
 
     model = LightGBMForecaster()
     model.fit(build_features(prices))
     return ModelArtifact(model=model, metadata=build_metadata(model, metrics=metrics))
+
+
+def describe_interval(interval: dict[str, float]) -> str:
+    return (
+        f"\nIntervalo del {interval['level']:.0%}: el precio real cayó dentro el {interval['coverage']:.1%} "
+        f"de las horas, con una anchura media de {interval['width']:.1f} €/MWh"
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -115,9 +136,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "backtest":
         end = args.end or local_date(prices["price"].dropna().index.max())
-        summary, _ = compare_models(prices, args.start, end)
+        summary, results = compare_models(prices, args.start, end)
         print(f"\nBacktest del {args.start} al {end} (reentrenando cada {REFIT_EVERY_DAYS} días), €/MWh:\n")
         print(summary.round(1).to_string())
+        print(describe_interval(interval_summary(results[LightGBMForecaster.name])))
     else:
         artifact = train_final_model(prices, metrics_days=args.metrics_days)
         path = save_artifact(artifact, args.output)
@@ -128,6 +150,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"MAE de los últimos {period['days']} días (€/MWh):")
         for name, values in meta.metrics["models"].items():
             print(f"  {name:13s} {values['mae']:.1f}")
+        print(describe_interval(meta.metrics["interval"]))
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ from src.ingestion import generation, prices
 from src.ingestion.backfill import local_today
 from src.ingestion.ree_client import ReeClient
 from src.models.evaluate import regression_metrics
-from src.models.predict import Forecast, forecast_table, predict_day
+from src.models.predict import Forecast, predict_day, print_forecast
 from src.models.registry import load_from_db, save_to_db
 from src.models.train import train_final_model
 from src.processing import dataset
@@ -189,15 +189,6 @@ def daily(
 # --- Línea de comandos ---
 
 
-def _print_forecast(forecast: Forecast) -> None:
-    source = f"{forecast.model} {forecast.model_version}" if forecast.model_version else forecast.model
-    print(f"\nPrevisión del PVPC para el {forecast.day:%d/%m/%Y} ({source})")
-    if forecast.used_fallback:
-        print(f"Respaldo activado: {forecast.fallback_reason}")
-    table = forecast_table(forecast)
-    print(table.to_string(index=False, formatters={"€/MWh": "{:.1f}".format, "€/kWh": "{:.3f}".format}))
-
-
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -220,10 +211,10 @@ def main(argv: list[str] | None = None) -> None:
             train(session, metrics_days=args.metrics_days)
     elif args.command == "predict":
         with session_scope() as session:
-            _print_forecast(forecast_next_day(session, args.day))
+            print_forecast(forecast_next_day(session, args.day))
     else:
         result = daily()
-        _print_forecast(result.forecast)
+        print_forecast(result.forecast)
         print(f"\nEstado: {result.status} · ejecución {result.run_id}", end=" · ")
         print(f"errores diarios actualizados: {result.errors_updated}")
     logger.info("Terminado en %.1f s", (datetime.now() - started).total_seconds())

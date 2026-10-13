@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from src.models.baselines import BaselineForecaster
-from src.models.evaluate import METRICS, backtest
+from src.models.evaluate import METRICS, backtest, interval_metrics
 from src.models.lightgbm_model import LightGBMForecaster
 from src.models.train import compare_models
 from src.processing.features import FEATURES, build_features
@@ -51,10 +51,46 @@ def test_rows_without_price_are_not_used_for_training(prices):
     assert model.training_rows_ == len(prices) - 24
 
 
+def test_interval_surrounds_the_prediction(prices):
+    features = build_features(prices)
+    model = LightGBMForecaster(params=FAST)
+    model.fit(features)
+
+    interval = model.predict_interval(features.iloc[-48:])
+
+    assert list(interval.columns) == ["lower", "prediction", "upper"]
+    assert interval.index.equals(features.index[-48:])
+    pd.testing.assert_series_equal(interval["prediction"], model.predict(features.iloc[-48:]), check_names=False)
+    assert (interval["lower"] <= interval["prediction"]).all()
+    assert (interval["prediction"] <= interval["upper"]).all()
+    assert (interval["upper"] > interval["lower"]).mean() > 0.9  # no es un punto
+
+
+def test_interval_covers_about_80_percent_of_unseen_hours(prices):
+    results = backtest(
+        prices, LightGBMForecaster(params=FAST), date(2026, 2, 20), date(2026, 3, 11), refit_every_days=7
+    )
+
+    coverage = interval_metrics(results["price"], results["lower"], results["upper"])["coverage"]
+
+    assert 0.6 <= coverage <= 0.95
+
+
+def test_backtest_includes_the_interval_only_for_models_that_give_it(prices):
+    day = date(2026, 3, 5)
+    with_interval = backtest(prices, LightGBMForecaster(params=FAST), day, day)
+    without = backtest(prices, BaselineForecaster("precio_ayer"), day, day)
+
+    assert {"lower", "upper"} <= set(with_interval.columns)
+    assert not {"lower", "upper"} & set(without.columns)
+
+
 def test_errors_before_training_or_without_data(prices):
     model = LightGBMForecaster(params=FAST)
     with pytest.raises(RuntimeError, match="no está entrenado"):
         model.predict(build_features(prices))
+    with pytest.raises(RuntimeError, match="no está entrenado"):
+        model.predict_interval(build_features(prices))
     with pytest.raises(ValueError, match="No hay filas"):
         model.fit(build_features(prices).assign(price=np.nan))
 
@@ -78,6 +114,8 @@ def test_lightgbm_never_uses_the_price_of_the_day_it_predicts(prices):
     changed = backtest(tampered, LightGBMForecaster(params=FAST), day, day)
 
     pd.testing.assert_series_equal(original["prediction"], changed["prediction"])
+    pd.testing.assert_series_equal(original["lower"], changed["lower"])
+    pd.testing.assert_series_equal(original["upper"], changed["upper"])
 
 
 def test_learns_weekly_and_hourly_patterns_better_than_yesterday_price(prices):

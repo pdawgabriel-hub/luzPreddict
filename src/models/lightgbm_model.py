@@ -1,5 +1,8 @@
 """Modelo LightGBM que predice el precio horario a partir de `FEATURES`.
 
+Además de la previsión, dos modelos de regresión por cuantiles dan un intervalo
+(`QUANTILES`): el precio real debería quedar dentro 8 de cada 10 horas.
+
 Está en su propio módulo, separado del comando de entrenamiento, para que el
 modelo guardado se pueda cargar desde cualquier programa: si la clase estuviera
 en el módulo que se ejecuta con `python -m`, pickle la guardaría como
@@ -7,6 +10,7 @@ en el módulo que se ejecuta con `python -m`, pickle la guardaría como
 """
 
 import lightgbm as lgb
+import numpy as np
 import pandas as pd
 
 from src.processing.features import FEATURES, TARGET
@@ -25,6 +29,11 @@ DEFAULT_PARAMS = {
     "random_state": 42,
     "verbose": -1,
 }
+# Percentiles de los límites del intervalo y cobertura que se anuncia. Con 10 y 90, el
+# precio real solo cayó dentro el 68 % de las horas de validación: con 5 y 95, el 80 %
+# (79,5 % en el periodo de prueba, con 55 €/MWh de anchura media).
+QUANTILES = (0.05, 0.95)
+INTERVAL_LEVEL = 0.8
 
 
 class LightGBMForecaster:
@@ -32,11 +41,19 @@ class LightGBMForecaster:
 
     name = "lightgbm"
 
-    def __init__(self, params: dict | None = None, train_days: int | None = TRAIN_DAYS, features: list[str] = FEATURES):
+    def __init__(
+        self,
+        params: dict | None = None,
+        train_days: int | None = TRAIN_DAYS,
+        features: list[str] = FEATURES,
+        quantiles: tuple[float, float] = QUANTILES,
+    ):
         self.params = {**DEFAULT_PARAMS, **(params or {})}
         self.train_days = train_days
         self.features = list(features)
+        self.quantiles = quantiles
         self.model: lgb.LGBMRegressor | None = None
+        self.quantile_models: list[lgb.LGBMRegressor] = []
         self.training_rows_ = 0
         self.train_start_: pd.Timestamp | None = None
         self.train_end_: pd.Timestamp | None = None
@@ -50,6 +67,12 @@ class LightGBMForecaster:
 
         self.model = lgb.LGBMRegressor(**self.params)
         self.model.fit(train[self.features], train[TARGET])
+        # Mismos parámetros que el modelo principal, con otro objetivo
+        self.quantile_models = [
+            lgb.LGBMRegressor(**{**self.params, "objective": "quantile", "alpha": q}) for q in self.quantiles
+        ]
+        for model in self.quantile_models:
+            model.fit(train[self.features], train[TARGET])
         self.training_rows_ = len(train)
         self.train_start_, self.train_end_ = train.index.min(), train.index.max()
 
@@ -57,6 +80,20 @@ class LightGBMForecaster:
         if self.model is None:
             raise RuntimeError("El modelo no está entrenado: llama antes a fit()")
         return pd.Series(self.model.predict(features[self.features]), index=features.index, name="prediction")
+
+    def predict_interval(self, features: pd.DataFrame) -> pd.DataFrame:
+        """Previsión con su intervalo: columnas `lower`, `prediction` y `upper`."""
+        prediction = self.predict(features).to_numpy()
+        lower, upper = (model.predict(features[self.features]) for model in self.quantile_models)
+        # Los tres modelos se entrenan por separado y en alguna hora podrían cruzarse
+        return pd.DataFrame(
+            {
+                "lower": np.minimum(lower, prediction),
+                "prediction": prediction,
+                "upper": np.maximum(upper, prediction),
+            },
+            index=features.index,
+        )
 
     def feature_importance(self) -> pd.Series:
         """Ganancia total aportada por cada variable, de mayor a menor."""

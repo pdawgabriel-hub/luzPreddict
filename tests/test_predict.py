@@ -6,7 +6,7 @@ import pytest
 
 from src.models.baselines import predict_baseline
 from src.models.lightgbm_model import LightGBMForecaster
-from src.models.predict import FALLBACK_BASELINE, forecast_table, next_day, predict_day
+from src.models.predict import FALLBACK_BASELINE, forecast_table, next_day, predict_day, print_forecast
 from src.models.registry import IncompatibleModelError, ModelArtifact, build_metadata
 from src.processing.features import build_features, features_for_day
 from src.utils.calendar import local_day_hours, market_timezone
@@ -45,6 +45,15 @@ def test_predicts_every_hour_of_the_next_day_with_the_model(prices, artifact):
     )
 
 
+def test_model_forecast_includes_its_interval(prices, artifact):
+    forecast = predict_day(prices, artifact=artifact)
+
+    assert forecast.lower.index.equals(forecast.prices.index)
+    assert forecast.upper.index.equals(forecast.prices.index)
+    assert (forecast.lower <= forecast.prices).all()
+    assert (forecast.prices <= forecast.upper).all()
+
+
 def test_can_predict_a_past_day_using_only_earlier_prices(prices, artifact):
     forecast = predict_day(prices, day=date(2026, 2, 1), artifact=artifact)
     assert forecast.day == date(2026, 2, 1)
@@ -61,16 +70,36 @@ def test_falls_back_to_yesterday_price_when_there_is_no_saved_model(prices):
     assert forecast.model_version is None
     assert forecast.used_fallback
     assert "make train" in forecast.fallback_reason
+    assert forecast.lower is None and forecast.upper is None
     expected = predict_baseline(FALLBACK_BASELINE, features_for_day(prices, forecast.day))
     pd.testing.assert_series_equal(forecast.prices, expected, check_names=False)
 
 
-def test_forecast_table_uses_local_hours_and_both_units(prices, artifact):
-    table = forecast_table(predict_day(prices, artifact=artifact))
+def test_forecast_table_uses_local_hours_both_units_and_the_interval(prices, artifact):
+    forecast = predict_day(prices, artifact=artifact)
+    table = forecast_table(forecast)
 
-    assert list(table.columns) == ["hora", "€/MWh", "€/kWh"]
+    assert list(table.columns) == ["hora", "€/MWh", "€/kWh", "desde", "hasta"]
     assert table["hora"].iloc[0] == "00:00"
     assert table["€/kWh"].iloc[0] == pytest.approx(table["€/MWh"].iloc[0] / 1000)
+    assert table["desde"].iloc[0] == pytest.approx(forecast.lower.iloc[0])
+
+
+def test_forecast_table_without_interval(prices):
+    def no_model():
+        raise FileNotFoundError("sin modelo")
+
+    table = forecast_table(predict_day(prices, load=no_model))
+
+    assert list(table.columns) == ["hora", "€/MWh", "€/kWh"]
+
+
+def test_print_forecast_shows_the_interval(prices, artifact, capsys):
+    print_forecast(predict_day(prices, artifact=artifact))
+
+    out = capsys.readouterr().out
+    assert "desde" in out and "hasta" in out
+    assert "hora más barata" in out
 
 
 def test_without_history_there_is_no_forecast(prices, artifact):
@@ -181,6 +210,25 @@ def test_misbehaving_model_activates_the_fallback(prices, artifact, behaviour, r
     assert reason in forecast.fallback_reason
     assert len(forecast.prices) == 24 and forecast.prices.notna().all()
     assert "en lugar del modelo" in caplog.text
+
+
+class BrokenIntervalModel(BrokenModel):
+    """Modelo con intervalo cuyo límite superior sale vacío en una hora."""
+
+    def predict_interval(self, features):
+        values = pd.Series(150.0, index=features.index)
+        upper = values + 20
+        upper.iloc[5] = np.nan
+        return pd.DataFrame({"lower": values - 20, "prediction": values, "upper": upper})
+
+
+def test_an_empty_interval_also_activates_the_fallback(prices, artifact):
+    broken = ModelArtifact(model=BrokenIntervalModel("ok"), metadata=artifact.metadata)
+
+    forecast = predict_day(prices, artifact=broken)
+
+    assert forecast.model == FALLBACK_BASELINE
+    assert "vacíos o infinitos" in forecast.fallback_reason
 
 
 @pytest.mark.parametrize(
