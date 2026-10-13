@@ -1,0 +1,221 @@
+.power {
+  display: grid;
+  gap: var(--space-1-5);
+  font-weight: var(--weight-semibold);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.danger {
+  font-weight: var(--weight-semibold);
+  color: var(--color-danger-text);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.section p {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.add button {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.add button:hover:not(:disabled) {
+  border-style: solid;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* --- Rejilla tarea × hora --- */
+
+.gridScroll {
+  overflow-x: auto;
+  transition: opacity 0.15s;
+}
+
+.gridScroll[data-busy] {
+  opacity: 0.55;
+}
+
+.grid {
+  display: grid;
+  align-items: center;
+  gap: var(--space-1) 2px;
+  min-width: 860px;
+}
+
+.rowLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.price {
+  height: 14px;
+  border-radius: 2px;
+}
+
+.hour {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-text-muted);
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-1);
+}
+
+.taskName {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+}
+
+.taskDetail {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+}
+
+.remove {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-bg);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove:hover {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.habitual select {
+  min-height: 36px;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.pin {
+  flex: none;
+  min-width: 76px;
+  min-height: 36px;
+  padding: 0 var(--space-2-5);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.pin[aria-pressed='true'] {
+  border-color: var(--color-chart-neutral);
+  background: var(--color-chart-neutral);
+  color: var(--color-text-inverse);
+}
+
+.cell {
+  height: 28px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+}
+
+.cell[data-plan='plan'] {
+  background: var(--color-accent);
+}
+
+.cell[data-plan='fixed'] {
+  background: var(--color-chart-neutral);
+}
+
+/* Hora habitual de una tarea flexible: borde discontinuo */
+.cell[data-habitual] {
+  box-shadow: inset 0 0 0 2px var(--color-expensive-text);
+}
+
+.outcome {
+  display: grid;
+  padding-left: var(--space-2);
+  font-size: var(--text-md);
+}
+
+/* --- Leyenda --- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.key {
+  width: 18px;
+  height: 12px;
+  border-radius: var(--radius-xs);
+}
+
+.key[data-kind='plan'] {
+  background: var(--color-accent);
+}
+
+.key[data-kind='habitual'] {
+  box-shadow: inset 0 0 0 2px var(--color-expensive-text);
+}
+
+.key[data-kind='fixed'] {
+  background: var(--color-chart-neutral);
+}

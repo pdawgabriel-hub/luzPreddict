@@ -24,16 +24,17 @@ type Props = {
   categoryLabel?: string // cabecera de la primera columna (por defecto, "Hora"; "Día" si las barras son días)
   selectedIndex?: number // barra seleccionada, con borde
   onSelect?: (index: number) => void // si se da, cada barra es un botón (ratón, Intro/Espacio y flechas)
+  threshold?: { value: number; label: string } // línea de referencia, p. ej. la potencia contratada
 }
 
 const MARGIN = { top: 8, right: 4, bottom: 22, left: 44 }
 
 /** Barras hora a hora (precio de un día, previsión, error por hora…). */
-export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor', categoryLabel = 'Hora', selectedIndex, onSelect }: Props) {
+export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor', categoryLabel = 'Hora', selectedIndex, onSelect, threshold }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1)
   const plotHeight = height - MARGIN.top - MARGIN.bottom
-  const max = Math.max(0, ...bars.map((b) => b.value))
+  const max = Math.max(0, threshold?.value ?? 0, ...bars.map((b) => b.value))
   const min = Math.min(0, ...bars.map((b) => b.value))
   const ticks = niceTicks(min, max)
   const y = linearScale([ticks[0], ticks[ticks.length - 1]], [plotHeight, 0])
@@ -89,6 +90,14 @@ export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend =
               )
             })}
             <line className={styles.axis} x1={0} x2={plotWidth} y1={y(0)} y2={y(0)} />
+            {threshold && (
+              <g data-testid="threshold" className={styles.threshold}>
+                <line x1={0} x2={plotWidth} y1={y(threshold.value)} y2={y(threshold.value)} />
+                <text x={plotWidth} y={y(threshold.value) - 6} textAnchor="end">
+                  {threshold.label}
+                </text>
+              </g>
+            )}
             {onSelect &&
               bars.map((bar, i) => (
                 <rect

@@ -51,6 +51,19 @@
   stroke-dasharray: none;
 }
 
+/* Línea de referencia (p. ej. la potencia contratada) */
+.threshold line {
+  stroke: var(--color-danger-text);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.threshold text {
+  fill: var(--color-danger-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+}
+
 /* Zona pulsable de cada barra (toda la columna, no solo la barra) */
 .hit {
   fill: transparent;

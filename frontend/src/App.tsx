@@ -5,11 +5,12 @@ import Mercado from './pages/Mercado'
 import NotFound from './pages/NotFound'
 import Panel from './pages/Panel'
 import Placeholder from './pages/Placeholder'
+import Planificador from './pages/Planificador'
 import Simulador from './pages/Simulador'
 import { ROUTES } from './routes'
 
 // Páginas ya hechas; el resto aún muestra el aviso de "en construcción"
-const PAGES = new Set(['/', '/historico', '/mercado', '/simulador'])
+const PAGES = new Set(['/', '/historico', '/mercado', '/simulador', '/planificador'])
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/historico" element={<Historico />} />
         <Route path="/mercado" element={<Mercado />} />
         <Route path="/simulador" element={<Simulador />} />
+        <Route path="/planificador" element={<Planificador />} />
         {ROUTES.filter((route) => !PAGES.has(route.path)).map((route) => (
           <Route key={route.path} path={route.path} element={<Placeholder title={route.title} />} />
         ))}
