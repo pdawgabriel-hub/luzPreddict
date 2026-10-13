@@ -26,6 +26,8 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Tema público del resumen diario: el mismo que enlaza la web (VITE_NTFY_TOPIC)
+      NTFY_TOPIC: luzpreddict
       PYTHONUNBUFFERED: "1"
 
     steps:
@@ -46,13 +48,35 @@ jobs:
       - name: Migraciones (Alembic)
         run: python -m alembic upgrade head
 
-      # Escribe el resumen de la ejecución y deja `status` (completo o pendiente) como salida
+      # Escribe el resumen de la ejecución, deja `status` (completo o pendiente) como salida y
+      # envía el resumen de mañana a ntfy si toca (una vez al día; en el último intento, con
+      # la previsión si REE aún no ha publicado)
       - name: Tarea diaria
         id: daily
-        run: python -m src.pipeline daily
+        run: python -m src.pipeline daily --notify ${{ github.event.schedule == '30 21 * * *' && '--last-attempt' || '' }}
 
       - name: REE sigue sin publicar
         if: steps.daily.outputs.status == 'pendiente' && github.event.schedule == '30 21 * * *'
         run: |
           echo "::warning::REE aún no ha publicado el PVPC de mañana en el último intento del día." \
             "La web muestra la previsión hasta que lo publique; la tarea de mañana lo recogerá."
+
+      # Aviso al tema privado de ntfy. Con curl y jq (no Python): funciona aunque lo roto sea Python
+      - name: Aviso privado si falla
+        if: failure()
+        env:
+          NTFY_ADMIN_TOPIC: ${{ secrets.NTFY_ADMIN_TOPIC }}
+          WORKFLOW: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$NTFY_ADMIN_TOPIC" ]; then
+            echo "::warning::Sin el secreto NTFY_ADMIN_TOPIC no se puede avisar del fallo"
+            exit 0
+          fi
+          jq -n --arg topic "$NTFY_ADMIN_TOPIC" --arg workflow "$WORKFLOW" --arg url "$RUN_URL" '{
+            topic: $topic,
+            title: "luzPreddict: ha fallado \($workflow)",
+            message: "Revisa el log de la ejecución para ver qué paso ha fallado.",
+            priority: 4,
+            click: $url
+          }' | curl -fsS --max-time 15 -H "Content-Type: application/json" --data-binary @- https://ntfy.sh > /dev/null

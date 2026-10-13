@@ -39,6 +39,7 @@ MODEL_NAMES = {
 @dataclass(frozen=True)
 class Digest:
     day: date
+    source: str  # "published" (precios de REE) o "forecast" (previsión)
     mean_price: float  # €/MWh
     cheapest_window: Window
     priciest_window: Window
@@ -126,6 +127,7 @@ def build_digest(
 
     return Digest(
         day=day,
+        source=source,
         mean_price=mean,
         cheapest_window=cheapest,
         priciest_window=priciest,

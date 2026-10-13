@@ -7,6 +7,7 @@ from src import pipeline
 from src.db import repository
 from src.db.models import ModelRun
 from src.ingestion import prices
+from src.utils.config import Settings
 from tests.fakes import SEEDED_LAST_DAY as LAST_DAY
 from tests.fakes import FakeReeClient
 
@@ -196,3 +197,100 @@ def test_warns_in_actions_when_the_model_does_not_beat_the_baselines(monkeypatch
 
     pipeline.report_training_to_github("v", METRICS)
     assert capsys.readouterr().out == ""  # si mejora, sin aviso
+
+
+# --- Resumen diario por ntfy ---
+
+
+def test_the_digest_is_sent_once_when_tomorrows_prices_arrive(seeded, sessions):
+    client = FakeReeClient(published_until=LAST_DAY + timedelta(days=1))
+
+    first = pipeline.daily(client=client, today=LAST_DAY, session_factory=sessions)
+    digest = pipeline.daily_digest(seeded, first)
+
+    assert first.tomorrow_just_published
+    assert digest.day == LAST_DAY + timedelta(days=1)
+    assert digest.source == "published"
+    assert digest.body.endswith("Precios publicados por REE.")
+
+    retry = pipeline.daily(client=client, today=LAST_DAY, session_factory=sessions)  # el reintento de las 21:30
+    assert not retry.tomorrow_just_published
+    assert pipeline.daily_digest(seeded, retry, last_attempt=True) is None
+
+
+def test_without_ree_prices_the_forecast_is_sent_only_on_the_last_attempt(seeded, sessions):
+    client = FakeReeClient(published_until=LAST_DAY)
+    result = pipeline.daily(client=client, today=LAST_DAY, session_factory=sessions)
+
+    assert pipeline.daily_digest(seeded, result) is None  # aún puede publicar: se espera al reintento
+
+    digest = pipeline.daily_digest(seeded, result, last_attempt=True)
+    assert digest.source == "forecast"
+    assert digest.day == LAST_DAY + timedelta(days=1)
+    assert 'Previsión de luzPreddict (respaldo "precio de ayer")' in digest.body
+
+
+@pytest.fixture
+def ntfy_settings(monkeypatch):
+    settings = Settings(_env_file=None, ntfy_topic="luzpreddict", site_url="https://luzpreddict.vercel.app")
+    monkeypatch.setattr(pipeline, "get_settings", lambda: settings)
+    return settings
+
+
+def test_notify_publishes_to_the_public_topic(seeded, sessions, ntfy_settings, monkeypatch):
+    published = []
+    monkeypatch.setattr(pipeline.ntfy, "publish", lambda *args, **kwargs: published.append((args, kwargs)) or "id1")
+    result = pipeline.daily(
+        client=FakeReeClient(published_until=LAST_DAY + timedelta(days=1)), today=LAST_DAY, session_factory=sessions
+    )
+
+    outcome = pipeline.notify(result, last_attempt=False, session_factory=sessions)
+
+    assert outcome == f"Resumen del {LAST_DAY + timedelta(days=1):%d/%m/%Y} enviado a ntfy (precios de REE)"
+    (server, topic, title, body), kwargs = published[0]
+    assert (server, topic) == ("https://ntfy.sh", "luzpreddict")
+    assert title.startswith("Luz el ")
+    assert kwargs == {"click": "https://luzpreddict.vercel.app"}
+
+
+def test_a_ntfy_failure_does_not_fail_the_task(seeded, sessions, ntfy_settings, monkeypatch, capsys, caplog):
+    def down(*args, **kwargs):
+        raise TimeoutError("ntfy no responde")
+
+    monkeypatch.setattr(pipeline.ntfy, "publish", down)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    result = pipeline.daily(
+        client=FakeReeClient(published_until=LAST_DAY + timedelta(days=1)), today=LAST_DAY, session_factory=sessions
+    )
+
+    outcome = pipeline.notify(result, last_attempt=False, session_factory=sessions)
+
+    assert outcome == "No se pudo enviar el resumen (TimeoutError)"
+    assert "::warning::No se pudo enviar el resumen a ntfy (TimeoutError: ntfy no responde)" in capsys.readouterr().out
+    assert "ntfy no responde" in caplog.text
+
+
+def test_without_a_topic_nothing_is_sent(seeded, sessions, monkeypatch):
+    monkeypatch.setattr(pipeline, "get_settings", lambda: Settings(_env_file=None))
+    result = pipeline.daily(
+        client=FakeReeClient(published_until=LAST_DAY + timedelta(days=1)), today=LAST_DAY, session_factory=sessions
+    )
+
+    assert pipeline.notify(result, last_attempt=False, session_factory=sessions) == (
+        "No se pudo enviar el resumen (ValueError)"
+    )
+
+
+def test_the_daily_command_only_notifies_with_the_option(seeded, sessions, monkeypatch, capsys):
+    result = pipeline.daily(client=FakeReeClient(published_until=LAST_DAY), today=LAST_DAY, session_factory=sessions)
+    calls = []
+    monkeypatch.setattr(pipeline, "daily", lambda: result)
+    monkeypatch.setattr(pipeline, "configure_logging", lambda: None)
+    monkeypatch.setattr(pipeline, "notify", lambda result, last_attempt: calls.append(last_attempt) or "Enviado")
+
+    pipeline.main(["daily"])  # make pipeline: nunca envía
+    pipeline.main(["daily", "--notify"])
+    pipeline.main(["daily", "--notify", "--last-attempt"])
+
+    assert calls == [False, True]
+    assert capsys.readouterr().out.count("Enviado") == 2

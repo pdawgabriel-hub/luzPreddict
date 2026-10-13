@@ -13,6 +13,10 @@ mañana, termina como "pendiente".
 En GitHub Actions, `daily` y `train` dejan además un resumen en la página de la
 ejecución; `daily`, también su estado como salida del paso (`status`), para los pasos
 siguientes del workflow.
+
+Con `daily --notify`, la tarea envía el resumen de mañana al tema público de ntfy una
+sola vez al día: cuando llegan por primera vez los precios de REE o, si en el último
+intento (`--last-attempt`) aún no han llegado, con la previsión.
 """
 
 import argparse
@@ -34,8 +38,10 @@ from src.models.evaluate import regression_metrics
 from src.models.predict import Forecast, predict_day, print_forecast
 from src.models.registry import load_from_db, save_to_db
 from src.models.train import train_final_model
+from src.notifications import ntfy
 from src.processing import dataset
 from src.processing.features import HISTORY_DAYS
+from src.services.digest import Digest, build_digest
 from src.utils.calendar import local_date, local_day_hours, market_timezone
 from src.utils.config import get_settings
 from src.utils.logging import configure_logging
@@ -53,6 +59,7 @@ class BackfillResult:
     prices_changed: int
     generation_changed: int
     last_price_day: date | None
+    previous_last_price_day: date | None = None  # el último día con precio antes de esta ingesta
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,14 @@ class DailyResult:
     forecast: Forecast
     run_id: int
     errors_updated: int
+    today: date | None = None  # día local en que se ejecutó
+
+    @property
+    def tomorrow_just_published(self) -> bool:
+        """Si los precios de mañana han llegado en esta ejecución (y no en una anterior)."""
+        tomorrow = self.today + timedelta(days=1)
+        before, after = self.backfill.previous_last_price_day, self.backfill.last_price_day
+        return after is not None and after >= tomorrow and (before is None or before < tomorrow)
 
 
 # --- Pasos ---
@@ -76,6 +91,7 @@ def backfill(
     client = client or ReeClient()
 
     last_price = repository.last_price_datetime(session)
+    previous_last_day = local_date(last_price) if last_price else None
     start = local_date(last_price) if last_price and not full else history_start
     prices_changed = dataset.save_prices(session, prices.fetch_pvpc(start, today + timedelta(days=1), client))
 
@@ -84,7 +100,9 @@ def backfill(
     generation_changed = dataset.save_generation(session, generation.fetch_generation(start, today, client))
 
     last_price = repository.last_price_datetime(session)
-    result = BackfillResult(prices_changed, generation_changed, local_date(last_price) if last_price else None)
+    result = BackfillResult(
+        prices_changed, generation_changed, local_date(last_price) if last_price else None, previous_last_day
+    )
     logger.info(
         "Ingesta: %d horas de PVPC y %d filas de generación nuevas o cambiadas; último día con precio: %s",
         result.prices_changed,
@@ -215,7 +233,63 @@ def daily(
     status = "completo" if ingest.last_price_day and ingest.last_price_day >= tomorrow else "pendiente"
     if status == "pendiente":
         logger.warning("REE aún no ha publicado el PVPC del %s: se prevé ese día y se reintentará más tarde", tomorrow)
-    return DailyResult(status, ingest, forecast, run_id, errors)
+    return DailyResult(status, ingest, forecast, run_id, errors, today)
+
+
+# --- Resumen diario por ntfy ---
+
+
+def _day_prices(session: Session, day: date) -> list[tuple[datetime, float]]:
+    hours = local_day_hours(day)
+    return repository.get_prices(session, start=hours[0], end=hours[-1] + timedelta(hours=1))
+
+
+def daily_digest(session: Session, result: DailyResult, last_attempt: bool = False) -> Digest | None:
+    """El resumen de mañana que toca enviar tras esta ejecución, o None si no toca.
+
+    - Si los precios de mañana acaban de llegar: con los precios de REE.
+    - Si en el último intento del día aún no han llegado: con la previsión.
+    - En cualquier otro caso (p. ej. el reintento después de un día completo), nada:
+      así se envía una sola vez al día.
+    """
+    tomorrow = result.today + timedelta(days=1)
+    today_prices = _day_prices(session, result.today)
+    if result.tomorrow_just_published:
+        return build_digest(_day_prices(session, tomorrow), tomorrow, "published", previous_day_prices=today_prices)
+    if result.status == "pendiente" and last_attempt and result.forecast.day == tomorrow:
+        predicted = result.forecast.prices
+        forecast = list(zip(predicted.index.to_pydatetime(), predicted.astype(float), strict=True))
+        return build_digest(forecast, tomorrow, "forecast", result.forecast.model, previous_day_prices=today_prices)
+    return None
+
+
+def send_digest(digest: Digest) -> str:
+    """Publica el resumen en el tema público de ntfy. Devuelve el id del mensaje."""
+    settings = get_settings()
+    if not settings.ntfy_topic:
+        raise ValueError("Falta NTFY_TOPIC: el tema de ntfy al que enviar el resumen")
+    return ntfy.publish(settings.ntfy_server, settings.ntfy_topic, digest.title, digest.body, click=settings.site_url)
+
+
+def notify(result: DailyResult, last_attempt: bool, session_factory: Callable[[], object] = session_scope) -> str:
+    """Envía el resumen si toca y devuelve qué ha pasado, para el log y el resumen de GitHub.
+
+    Un fallo de ntfy no hace fallar la tarea: los datos ya están guardados.
+    """
+    with session_factory() as session:
+        digest = daily_digest(session, result, last_attempt)
+    if digest is None:
+        return "No toca enviar el resumen (ya se envió hoy o REE aún puede publicar)"
+    try:
+        message_id = send_digest(digest)
+    except Exception as exc:
+        logger.error("No se pudo enviar el resumen a ntfy: %s: %s", type(exc).__name__, exc)
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::warning::No se pudo enviar el resumen a ntfy ({type(exc).__name__}: {exc})")
+        return f"No se pudo enviar el resumen ({type(exc).__name__})"
+    kind = "precios de REE" if digest.source == "published" else "previsión"
+    logger.info("Resumen del %s enviado a ntfy (%s, id %s)", digest.day, kind, message_id)
+    return f"Resumen del {digest.day:%d/%m/%Y} enviado a ntfy ({kind})"
 
 
 # --- Línea de comandos ---
@@ -305,7 +379,11 @@ def main(argv: list[str] | None = None) -> None:
     backfill_cmd.add_argument("--full", action="store_true", help="descarga todo el histórico de nuevo")
     train_cmd = commands.add_parser("train", help="entrena y guarda el modelo")
     train_cmd.add_argument("--metrics-days", type=int, help="días recientes para medir el modelo")
-    commands.add_parser("daily", help="ingesta, previsión y error diario")
+    daily_cmd = commands.add_parser("daily", help="ingesta, previsión y error diario")
+    daily_cmd.add_argument("--notify", action="store_true", help="envía el resumen de mañana a ntfy si toca")
+    daily_cmd.add_argument(
+        "--last-attempt", action="store_true", help="último intento del día: sin precios de REE, envía la previsión"
+    )
     predict_cmd = commands.add_parser("predict", help="muestra la previsión sin guardarla")
     predict_cmd.add_argument("--day", type=date.fromisoformat, help="día local a predecir (AAAA-MM-DD)")
     args = parser.parse_args(argv)
@@ -326,6 +404,10 @@ def main(argv: list[str] | None = None) -> None:
     else:
         result = daily()
         report_to_github(result)
+        if args.notify:
+            notified = notify(result, args.last_attempt)
+            print(notified)
+            _append_to_github("GITHUB_STEP_SUMMARY", f"\n{notified}.\n")
         print_forecast(result.forecast)
         print(f"\nEstado: {result.status} · ejecución {result.run_id}", end=" · ")
         print(f"errores diarios actualizados: {result.errors_updated}")
