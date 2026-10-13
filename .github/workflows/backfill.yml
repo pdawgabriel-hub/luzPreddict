@@ -1,0 +1,101 @@
+name: Carga del histórico
+
+# Manual (pestaña Actions → "Carga del histórico" → Run workflow). Sirve para la carga
+# inicial en Neon y para rellenar huecos: sin "todo de nuevo", solo descarga lo que falta.
+on:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Descargar todo de nuevo desde junio de 2021 (si no, solo lo que falta)"
+        type: boolean
+        default: false
+      train:
+        description: "Entrenar y guardar el modelo al terminar"
+        type: boolean
+        default: true
+
+# Los workflows que escriben en la base de datos esperan su turno en lugar de solaparse
+concurrency:
+  group: neon-database
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    name: Migraciones, histórico de REE y modelo
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-pipeline.txt
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-pipeline.txt
+
+      - name: Comprobar el secreto DATABASE_URL
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Falta el secreto DATABASE_URL (Settings → Secrets and variables → Actions)"
+            exit 1
+          fi
+
+      - name: Migraciones (Alembic)
+        run: python -m alembic upgrade head
+
+      - name: Histórico de REE
+        run: python -m src.pipeline backfill ${{ inputs.full && '--full' || '' }}
+
+      - name: Entrenar el modelo
+        if: inputs.train
+        run: python -m src.pipeline train
+
+      - name: Resumen
+        if: always()
+        run: |
+          python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          from sqlalchemy import func, select
+
+          from src.db import repository
+          from src.db.models import GenerationDay, PriceHour
+          from src.db.session import session_scope
+          from src.utils.calendar import local_date
+
+
+          def es(value, decimals=0):
+              return f"{value:,.{decimals}f}".replace(",", " ").replace(".", ",").replace(" ", ".")
+
+
+          with session_scope() as session:
+              hours, first, last = session.execute(
+                  select(func.count(), func.min(PriceHour.datetime), func.max(PriceHour.datetime))
+              ).one()
+              days = session.scalar(select(func.count(func.distinct(GenerationDay.date))))
+              model = repository.get_model_artifact(session, include_data=False)
+
+          print("### Base de datos tras la carga\n")
+          print("| | |\n|---|---|")
+          if hours:
+              print(f"| Horas de PVPC | {es(hours)} ({local_date(first):%d/%m/%Y} – {local_date(last):%d/%m/%Y}) |")
+          else:
+              print("| Horas de PVPC | 0 |")
+          print(f"| Días de generación | {es(days)} |")
+          if model:
+              mae = model.metrics.get("models", {}).get("lightgbm", {}).get("mae")
+              print(f"| Modelo | {model.version}" + (f" · MAE {es(mae, 1)} €/MWh |" if mae is not None else " |"))
+          else:
+              print("| Modelo | ninguno |")
+          EOF
