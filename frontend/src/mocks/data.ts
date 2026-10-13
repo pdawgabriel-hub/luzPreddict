@@ -103,6 +103,11 @@ function forecastPrices(day: string): number[] {
   return dayPrices(day).map(({ price }) => round(price * (0.88 + random() * 0.24)))
 }
 
+// Intervalo del 80 %: más ancho cuanto más alto el precio, como el del modelo real
+function intervalHalfWidth(price: number): number {
+  return round(8 + Math.abs(price) * 0.15)
+}
+
 function dailyMae(day: string): number {
   const actual = dayPrices(day)
   return round(mean(forecastPrices(day).map((p, i) => Math.abs(p - actual[i].price))))
@@ -119,9 +124,12 @@ export function forecast(day: string, lastDay: string, now: Date): Forecast {
     fallback_reason: null,
     unit: '€/MWh',
     mae: actual ? dailyMae(day) : null,
+    interval_level: 0.8,
     hours: dayHours(day).map((instant, i) => ({
       datetime: toMadridIso(instant),
       price: predicted[i],
+      lower: round(predicted[i] - intervalHalfWidth(predicted[i])),
+      upper: round(predicted[i] + intervalHalfWidth(predicted[i])),
       period: tariffPeriod(instant),
       actual: actual ? actual[i].price : null,
     })),
@@ -344,6 +352,7 @@ export function modelReport(now: Date, days: number): ModelReport {
         { model: 'precio_ayer', label: 'Precio de ayer', is_baseline: true, mae: 33.54, rmse: 52.7, bias: -0.49 },
       ],
       improvement_pct: 32.4,
+      interval: { level: 0.8, coverage: 0.795, width: 54.83 },
     },
     live: {
       start,

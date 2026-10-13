@@ -8,7 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from src.api.cache import cache_until_refresh
 from src.api.deps import MAX_HISTORY_DAYS, NowDep, SessionDep, today
 from src.api.errors import error_responses
-from src.api.schemas.model import Backtest, DailyErrorOut, LiveErrors, ModelInfo, ModelMetrics, ModelReport
+from src.api.schemas.model import (
+    Backtest,
+    DailyErrorOut,
+    IntervalMetrics,
+    LiveErrors,
+    ModelInfo,
+    ModelMetrics,
+    ModelReport,
+)
 from src.db import repository
 from src.db.models import ModelArtifact
 from src.utils.calendar import market_timezone
@@ -54,7 +62,14 @@ def build_backtest(metrics: dict) -> Backtest | None:
         method=BACKTEST_METHOD,
         models=rows,
         improvement_pct=improvement,
+        interval=_interval(metrics.get("interval")),
     )
+
+
+def _interval(values: dict | None) -> IntervalMetrics | None:
+    if not values:
+        return None
+    return IntervalMetrics(level=values["level"], coverage=values["coverage"], width=values["width"])
 
 
 def _model_info(artifact: ModelArtifact) -> ModelInfo:

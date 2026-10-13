@@ -70,7 +70,7 @@ export interface paths {
         };
         /**
          * Previsión de un día
-         * @description Última previsión generada para `date`; sin `date`, la más reciente. Si REE ya publicó ese día, cada hora incluye el precio real y el error medio.
+         * @description Última previsión generada para `date`; sin `date`, la más reciente. Cada hora incluye un intervalo (`lower`–`upper`) en el que debería caer el precio real con la probabilidad de `interval_level`. Si REE ya publicó ese día, cada hora incluye el precio real y el error medio.
          */
         get: operations["get_forecast_v1_forecast_get"];
         put?: never;
@@ -278,6 +278,8 @@ export interface components {
              * @description Cuánto menos se equivoca LightGBM que la mejor referencia, en %
              */
             improvement_pct: number | null;
+            /** @description Intervalo de predicción de LightGBM (None si no lo tiene) */
+            interval: components["schemas"]["IntervalMetrics"] | null;
         };
         /** BestHours */
         BestHours: {
@@ -603,6 +605,11 @@ export interface components {
              * @description Error absoluto medio frente al precio real, cuando ya está publicado entero
              */
             mae: number | null;
+            /**
+             * Interval Level
+             * @description Parte de las horas en que el precio real quedó entre `lower` y `upper` al medir el modelo (0.8: 8 de cada 10). Null si la previsión no tiene intervalo, como la de respaldo
+             */
+            interval_level: number | null;
             /** Hours */
             hours: components["schemas"]["ForecastHour"][];
             /**
@@ -644,6 +651,16 @@ export interface components {
              * @description Precio previsto en €/MWh
              */
             price: number;
+            /**
+             * Lower
+             * @description Límite inferior del intervalo de predicción (null sin intervalo)
+             */
+            lower: number | null;
+            /**
+             * Upper
+             * @description Límite superior del intervalo de predicción (null sin intervalo)
+             */
+            upper: number | null;
             /** @description Periodo de la tarifa 2.0TD */
             period: components["schemas"]["TariffPeriod"];
             /**
@@ -736,6 +753,24 @@ export interface components {
              *     }
              */
             source: components["schemas"]["Source"];
+        };
+        /** IntervalMetrics */
+        IntervalMetrics: {
+            /**
+             * Level
+             * @description Cobertura anunciada del intervalo (0.8: 8 de cada 10 horas)
+             */
+            level: number;
+            /**
+             * Coverage
+             * @description Parte de las horas en que el precio real quedó dentro del intervalo
+             */
+            coverage: number;
+            /**
+             * Width
+             * @description Anchura media del intervalo, en €/MWh
+             */
+            width: number;
         };
         /** LiveErrors */
         LiveErrors: {

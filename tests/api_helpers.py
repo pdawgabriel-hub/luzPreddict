@@ -41,14 +41,17 @@ def save_profile(session, day, profile=PROFILE):
     repository.upsert_prices(session, list(zip(local_day_hours(day), profile, strict=True)))
 
 
-def save_run(session, day, prediction=90.0, minutes_ago=5, model="lightgbm"):
+def save_run(session, day, prediction=90.0, minutes_ago=5, model="lightgbm", interval=None, model_version=None):
+    """Previsión con el mismo valor en cada hora; con `interval`, un intervalo de ± ese valor."""
+    bounds = (prediction - interval, prediction + interval) if interval is not None else ()
     repository.save_forecast(
         session,
         repository.ForecastToSave(
             target_day=day,
             generated_at=NOW - timedelta(minutes=minutes_ago),
             model=model,
-            hours=[(ts, prediction) for ts in local_day_hours(day)],
+            model_version=model_version,
+            hours=[repository.HourToSave(ts, prediction, *bounds) for ts in local_day_hours(day)],
         ),
     )
 
@@ -66,6 +69,7 @@ METRICS = {
         "media_7_dias": {"mae": 32.45, "rmse": 44.23, "bias": -2.3, "n": 2160.0},
         "precio_ayer": {"mae": 33.54, "rmse": 52.7, "bias": -0.49, "n": 2160.0},
     },
+    "interval": {"level": 0.8, "coverage": 0.795, "width": 54.83, "n": 2160},
 }
 
 

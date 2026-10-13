@@ -200,7 +200,7 @@
           "Previsión"
         ],
         "summary": "Previsión de un día",
-        "description": "Última previsión generada para `date`; sin `date`, la más reciente. Si REE ya publicó ese día, cada hora incluye el precio real y el error medio.",
+        "description": "Última previsión generada para `date`; sin `date`, la más reciente. Cada hora incluye un intervalo (`lower`–`upper`) en el que debería caer el precio real con la probabilidad de `interval_level`. Si REE ya publicó ese día, cada hora incluye el precio real y el error medio.",
         "operationId": "get_forecast_v1_forecast_get",
         "parameters": [
           {
@@ -925,6 +925,17 @@
             ],
             "title": "Improvement Pct",
             "description": "Cuánto menos se equivoca LightGBM que la mejor referencia, en %"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntervalMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Intervalo de predicción de LightGBM (None si no lo tiene)"
           }
         },
         "type": "object",
@@ -934,7 +945,8 @@
           "days",
           "method",
           "models",
-          "improvement_pct"
+          "improvement_pct",
+          "interval"
         ],
         "title": "Backtest"
       },
@@ -1558,6 +1570,18 @@
             "title": "Mae",
             "description": "Error absoluto medio frente al precio real, cuando ya está publicado entero"
           },
+          "interval_level": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Level",
+            "description": "Parte de las horas en que el precio real quedó entre `lower` y `upper` al medir el modelo (0.8: 8 de cada 10). Null si la previsión no tiene intervalo, como la de respaldo"
+          },
           "hours": {
             "items": {
               "$ref": "#/components/schemas/ForecastHour"
@@ -1589,6 +1613,7 @@
           "model_version",
           "fallback_reason",
           "mae",
+          "interval_level",
           "hours"
         ],
         "title": "Forecast"
@@ -1625,6 +1650,30 @@
             "title": "Price",
             "description": "Precio previsto en €/MWh"
           },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower",
+            "description": "Límite inferior del intervalo de predicción (null sin intervalo)"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper",
+            "description": "Límite superior del intervalo de predicción (null sin intervalo)"
+          },
           "period": {
             "$ref": "#/components/schemas/TariffPeriod",
             "description": "Periodo de la tarifa 2.0TD"
@@ -1646,6 +1695,8 @@
         "required": [
           "datetime",
           "price",
+          "lower",
+          "upper",
           "period",
           "actual"
         ],
@@ -1816,6 +1867,32 @@
           "days"
         ],
         "title": "History"
+      },
+      "IntervalMetrics": {
+        "properties": {
+          "level": {
+            "type": "number",
+            "title": "Level",
+            "description": "Cobertura anunciada del intervalo (0.8: 8 de cada 10 horas)"
+          },
+          "coverage": {
+            "type": "number",
+            "title": "Coverage",
+            "description": "Parte de las horas en que el precio real quedó dentro del intervalo"
+          },
+          "width": {
+            "type": "number",
+            "title": "Width",
+            "description": "Anchura media del intervalo, en €/MWh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "coverage",
+          "width"
+        ],
+        "title": "IntervalMetrics"
       },
       "LiveErrors": {
         "properties": {

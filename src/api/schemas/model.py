@@ -26,6 +26,12 @@ class ModelMetrics(BaseModel):
     bias: float = Field(description="Error medio con signo (negativo: la previsión se queda corta)")
 
 
+class IntervalMetrics(BaseModel):
+    level: float = Field(description="Cobertura anunciada del intervalo (0.8: 8 de cada 10 horas)")
+    coverage: float = Field(description="Parte de las horas en que el precio real quedó dentro del intervalo")
+    width: float = Field(description="Anchura media del intervalo, en €/MWh")
+
+
 class Backtest(BaseModel):
     start: dt.date
     end: dt.date
@@ -33,6 +39,7 @@ class Backtest(BaseModel):
     method: str = Field(description="Cómo se midió")
     models: list[ModelMetrics] = Field(description="De menor a mayor error")
     improvement_pct: float | None = Field(description="Cuánto menos se equivoca LightGBM que la mejor referencia, en %")
+    interval: IntervalMetrics | None = Field(description="Intervalo de predicción de LightGBM (None si no lo tiene)")
 
 
 class DailyErrorOut(BaseModel):

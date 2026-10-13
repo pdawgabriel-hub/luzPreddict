@@ -41,6 +41,11 @@ def test_models_without_metrics_have_no_backtest(metrics):
     assert build_backtest(metrics) is None
 
 
+def test_models_trained_before_the_interval_have_none():
+    metrics = {k: v for k, v in METRICS.items() if k != "interval"}
+    assert build_backtest(metrics).interval is None
+
+
 def test_only_baselines_gives_no_improvement():
     metrics = {**METRICS, "models": {"precio_ayer": METRICS["models"]["precio_ayer"]}}
     assert build_backtest(metrics).improvement_pct is None
@@ -81,6 +86,7 @@ def test_model_report(client, db_session):
     assert body["model"]["trained_at"].endswith("+02:00")
     assert "data" not in body["model"]
     assert body["backtest"]["improvement_pct"] == 32.4
+    assert body["backtest"]["interval"] == {"level": 0.8, "coverage": 0.795, "width": 54.83}
     assert (body["live"]["start"], body["live"]["end"]) == ("2026-09-08", "2026-10-07")
     assert [d["date"] for d in body["live"]["days"]] == ["2026-10-04", "2026-10-05"]
     assert body["live"]["days"][1] == {

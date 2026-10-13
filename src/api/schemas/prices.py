@@ -27,6 +27,8 @@ class Prices(BaseModel):
 class ForecastHour(BaseModel):
     datetime: dt.datetime = Field(description="Inicio de la hora, en hora de Madrid")
     price: float = Field(description="Precio previsto en €/MWh")
+    lower: float | None = Field(description="Límite inferior del intervalo de predicción (null sin intervalo)")
+    upper: float | None = Field(description="Límite superior del intervalo de predicción (null sin intervalo)")
     period: TariffPeriod = Field(description="Periodo de la tarifa 2.0TD")
     actual: float | None = Field(description="Precio publicado por REE, si ya se conoce")
 
@@ -39,6 +41,12 @@ class Forecast(BaseModel):
     fallback_reason: str | None = Field(description="Por qué se usó la referencia en lugar del modelo")
     unit: Unit = "€/MWh"
     mae: float | None = Field(description="Error absoluto medio frente al precio real, cuando ya está publicado entero")
+    interval_level: float | None = Field(
+        description=(
+            "Parte de las horas en que el precio real quedó entre `lower` y `upper` al medir el modelo "
+            "(0.8: 8 de cada 10). Null si la previsión no tiene intervalo, como la de respaldo"
+        )
+    )
     hours: list[ForecastHour]
     source: Source = pvpc_source()
     disclaimer: str = Field(default=FORECAST_DISCLAIMER, description="Aviso: la previsión es orientativa")

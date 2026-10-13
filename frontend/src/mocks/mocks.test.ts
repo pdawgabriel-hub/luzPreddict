@@ -63,6 +63,13 @@ describe('datos de ejemplo', () => {
     expect(past.mae).toBeGreaterThan(0)
   })
 
+  it('la previsión trae un intervalo que contiene cada precio previsto', async () => {
+    const forecast = await get<Forecast>('/v1/forecast')
+
+    expect(forecast.interval_level).toBe(0.8)
+    expect(forecast.hours.every((h) => h.lower !== null && h.upper !== null && h.lower <= h.price && h.price <= h.upper)).toBe(true)
+  })
+
   it('el histórico y el mercado cubren los últimos 30 días', async () => {
     const history = await get<History>('/v1/history')
     const market = await get<Market>('/v1/market')

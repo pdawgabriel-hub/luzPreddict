@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import pytest
 
 from src.api.deps import MAX_RANGE_DAYS
-from tests.api_helpers import NOW, TODAY, TOMORROW, error_fields, make_client, save_prices, save_run
+from tests.api_helpers import NOW, TODAY, TOMORROW, error_fields, make_client, save_artifact, save_prices, save_run
 
 
 @pytest.fixture
@@ -113,13 +113,36 @@ def test_forecast_defaults_to_the_latest(client, db_session):
     assert body["date"] == "2026-10-07"
     assert body["model"] == "lightgbm"
     assert body["mae"] is None
+    assert body["interval_level"] is None
     assert len(body["hours"]) == 24
     assert body["hours"][0] == {
         "datetime": "2026-10-07T00:00:00+02:00",
         "price": 90.0,
+        "lower": None,
+        "upper": None,
         "period": "valle",
         "actual": None,
     }
+
+
+def test_forecast_with_interval(client, db_session):
+    save_artifact(db_session)
+    save_run(db_session, TOMORROW, prediction=90.123, interval=20, model_version="20261006-172844")
+
+    body = client.get("/v1/forecast").json()
+
+    assert body["interval_level"] == 0.8
+    assert (body["hours"][0]["lower"], body["hours"][0]["price"], body["hours"][0]["upper"]) == (70.12, 90.12, 110.12)
+
+
+def test_interval_without_known_level(client, db_session):
+    """Si el modelo que la hizo ya no está (o no midió su intervalo), los límites se dan sin nivel."""
+    save_run(db_session, TOMORROW, interval=20, model_version=None)
+
+    body = client.get("/v1/forecast").json()
+
+    assert body["interval_level"] is None
+    assert body["hours"][0]["lower"] == 70.0
 
 
 def test_forecast_of_a_published_day_includes_actual_prices_and_error(client, db_session):
