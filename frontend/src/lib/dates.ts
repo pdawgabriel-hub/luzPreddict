@@ -1,4 +1,4 @@
-// Fechas en hora de Madrid para los datos de ejemplo, con los cambios de hora
+// Fechas en hora de Madrid, con los cambios de hora
 // (días de 23 y 25 horas), igual que la API.
 
 const TZ = 'Europe/Madrid'

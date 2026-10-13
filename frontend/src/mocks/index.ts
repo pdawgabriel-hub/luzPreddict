@@ -4,7 +4,7 @@
 import { ApiError } from '../api/client'
 import type { BillRequest, Health, PlanRequest, SimulateRequest } from '../api/types'
 import * as data from './data'
-import { addDays } from './time'
+import { addDays } from '../lib/dates'
 
 const DELAY_MS = 150 // para ver los estados de carga en desarrollo
 const SLOW_DELAY_MS = 3_000

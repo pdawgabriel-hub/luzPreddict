@@ -57,7 +57,12 @@
   --color-price-3: #6f9be0;
   --color-price-4: #3767b8;
   --color-price-5: #173d7a;
-  /* Escala de la previsión: tonos ámbar para distinguirla del precio publicado */
+  /* Hora barata / media / cara (tercios del día) del precio publicado */
+  --color-tier-cheap: #a9c4eb;
+  --color-tier-mid: #4f82d6;
+  --color-tier-high: #173d7a;
+  /* Escala de la previsión: tonos ámbar para distinguirla del precio publicado.
+     También es barata / media / cara para la previsión */
   --color-forecast-1: #f8d48a;
   --color-forecast-2: #e99a1e;
   --color-forecast-3: #8a4b00;

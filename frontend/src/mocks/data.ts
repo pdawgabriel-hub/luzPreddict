@@ -24,7 +24,7 @@ import type {
   TariffPeriod,
 } from '../api/types'
 import { seeded } from './random'
-import { addDays, dayHours, daysBetween, madridDate, madridHour, toMadridIso, weekday } from './time'
+import { addDays, dayHours, daysBetween, madridDate, madridHour, toMadridIso, weekday } from '../lib/dates'
 
 const HOUR_MS = 3_600_000
 const PUBLISH_MINUTES = 20 * 60 + 15 // REE publica mañana hacia las 20:15

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, dayHours, daysBetween, madridDate, toMadridIso, weekday } from './time'
+import { addDays, dayHours, daysBetween, madridDate, toMadridIso, weekday } from './dates'
 
 describe('fechas en hora de Madrid', () => {
   it('un día normal tiene 24 horas desde la medianoche local', () => {

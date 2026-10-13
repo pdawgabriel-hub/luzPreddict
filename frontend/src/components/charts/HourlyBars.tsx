@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react'
 import { DataTable, Legend, type LegendItem } from './ChartParts'
 import styles from './Charts.module.css'
 import { useWidth } from '../../hooks/useWidth'
@@ -20,12 +21,14 @@ type Props = {
   height?: number
   legend?: LegendItem[]
   valueLabel?: string // cabecera de la columna de valores en la tabla
+  selectedIndex?: number // barra seleccionada, con borde
+  onSelect?: (index: number) => void // si se da, cada barra es un botón (ratón, Intro/Espacio y flechas)
 }
 
 const MARGIN = { top: 8, right: 4, bottom: 22, left: 44 }
 
 /** Barras hora a hora (precio de un día, previsión, error por hora…). */
-export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor' }: Props) {
+export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor', selectedIndex, onSelect }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1)
   const plotHeight = height - MARGIN.top - MARGIN.bottom
@@ -36,6 +39,20 @@ export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend =
   const slot = plotWidth / Math.max(bars.length, 1)
   const gap = Math.min(4, slot * 0.2)
   const labels = new Set(labelIndices(bars.length, plotWidth, 28))
+
+  // Flechas: pasan a la hora anterior o siguiente y mueven el foco con ella
+  const onKeyDown = (event: KeyboardEvent<SVGRectElement>, index: number) => {
+    const next = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: bars.length - 1 }[event.key]
+    if (next !== undefined && next >= 0 && next < bars.length) {
+      event.preventDefault()
+      onSelect?.(next)
+      const svg = event.currentTarget.ownerSVGElement
+      svg?.querySelector<SVGRectElement>(`[data-index="${next}"]`)?.focus()
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onSelect?.(index)
+    }
+  }
 
   return (
     <figure className={styles.figure}>
@@ -58,6 +75,7 @@ export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend =
                   data-testid="bar"
                   className={styles.bar}
                   data-current={bar.current || undefined}
+                  data-selected={i === selectedIndex || undefined}
                   x={i * slot + gap / 2}
                   y={top}
                   width={Math.max(slot - gap, 1)}
@@ -70,6 +88,24 @@ export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend =
               )
             })}
             <line className={styles.axis} x1={0} x2={plotWidth} y1={y(0)} y2={y(0)} />
+            {onSelect &&
+              bars.map((bar, i) => (
+                <rect
+                  key={`hit-${bar.key}`}
+                  data-index={i}
+                  className={styles.hit}
+                  x={i * slot}
+                  y={0}
+                  width={slot}
+                  height={plotHeight}
+                  role="button"
+                  tabIndex={i === (selectedIndex ?? 0) ? 0 : -1}
+                  aria-label={`${bar.name}: ${bar.display}`}
+                  aria-pressed={i === selectedIndex}
+                  onClick={() => onSelect(i)}
+                  onKeyDown={(event) => onKeyDown(event, i)}
+                />
+              ))}
             {bars.map((bar, i) =>
               labels.has(i) ? (
                 <text key={bar.key} className={styles.tickLabel} x={i * slot + slot / 2} y={plotHeight + 16} textAnchor="middle">

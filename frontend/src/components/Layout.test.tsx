@@ -49,7 +49,8 @@ describe('navegación', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Página no encontrada' })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Vuelve al panel' }))
-    expect(screen.getByRole('heading', { level: 1, name: 'Precio de la luz hoy y mañana' })).toBeInTheDocument()
+    // Al cargar los precios, el título del panel pasa a llevar la fecha
+    expect(await screen.findByRole('heading', { level: 1, name: /^Precio de la luz/ })).toBeInTheDocument()
   })
 
   it('el logo lleva al panel', async () => {

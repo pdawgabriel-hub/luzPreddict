@@ -38,9 +38,28 @@
   opacity: 0.8;
 }
 
-/* La hora actual: borde oscuro, como en el prototipo */
+/* La hora actual: borde discontinuo; la seleccionada, continuo, como en el prototipo */
 .bar[data-current] {
   stroke: var(--color-chart-axis);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+.bar[data-selected] {
+  stroke: var(--color-chart-axis);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+
+/* Zona pulsable de cada barra (toda la columna, no solo la barra) */
+.hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.hit:focus-visible {
+  outline: none;
+  stroke: var(--color-accent);
   stroke-width: 2;
 }
 

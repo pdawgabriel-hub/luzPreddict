@@ -1,0 +1,38 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.card[data-dark] {
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-text-inverse);
+}
+
+.label,
+.detail {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.card[data-dark] .label,
+.card[data-dark] .detail,
+.card[data-dark] .unit {
+  color: var(--color-text-inverse-muted);
+}
+
+.value {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+}
+
+.unit {
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+}
