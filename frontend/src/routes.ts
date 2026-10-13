@@ -11,7 +11,7 @@ export const ROUTES: PageRoute[] = [
   { path: '/', label: 'Panel', title: 'Precio de la luz hoy y mañana' },
   { path: '/historico', label: 'Histórico', title: 'Histórico de precios' },
   { path: '/mercado', label: 'Mercado', title: '¿De dónde viene la luz?' },
-  { path: '/simulador', label: 'Simulador', title: 'Simulador de consumo' },
+  { path: '/simulador', label: 'Simulador', title: '¿Cuándo me sale más barato?' },
   { path: '/planificador', label: 'Planificador', title: 'Planificador del día' },
   { path: '/factura', label: 'Factura', title: 'PVPC frente a precio fijo' },
   { path: '/alertas', label: 'Alertas', title: 'Alertas de precio' },

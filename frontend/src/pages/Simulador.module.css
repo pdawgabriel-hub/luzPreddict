@@ -1,0 +1,223 @@
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.form {
+  flex: 1 1 340px;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.result {
+  flex: 999 1 520px;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.fieldset legend,
+.label {
+  margin-bottom: var(--space-1-5);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1-5);
+}
+
+.appliances {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.appliance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-0-5);
+  min-height: 56px;
+  padding: var(--space-2-5) var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.appliance:hover {
+  border-color: var(--color-border-strong);
+}
+
+.appliance[aria-pressed='true'] {
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-text-inverse);
+}
+
+.applianceName {
+  font-weight: var(--weight-semibold);
+}
+
+.applianceDetail {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.appliance[aria-pressed='true'] .applianceDetail {
+  color: var(--color-text-inverse-muted);
+}
+
+.custom,
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.input {
+  display: grid;
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.input input {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-regular);
+}
+
+.input input[aria-invalid='true'] {
+  border-color: var(--color-danger-text);
+}
+
+.inputError {
+  font-weight: var(--weight-regular);
+  color: var(--color-danger-text);
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.alert {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-expensive-bg);
+  color: var(--color-expensive-text);
+  font-size: var(--text-md);
+}
+
+/* --- Resultado --- */
+
+.outcome {
+  display: grid;
+  gap: var(--space-4);
+  transition: opacity 0.15s;
+}
+
+/* Mientras llega el nuevo cálculo, el anterior se ve atenuado */
+.outcome[data-busy] {
+  opacity: 0.55;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.chartHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.useBest {
+  min-height: var(--touch-target);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.useBest:hover {
+  background: var(--color-accent-strong);
+}
+
+/* --- Comparativa --- */
+
+.comparison {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.comparison p {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-2-5);
+  border-bottom: 1px solid var(--color-surface-sunken);
+  text-align: right;
+}
+
+.table th:first-child {
+  text-align: left;
+}
+
+.table thead th {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.table tbody th {
+  font-weight: var(--weight-medium);
+}
+
+.table tr[data-selected] {
+  background: var(--color-brand-soft);
+}
+
+.table tfoot th,
+.table tfoot td {
+  border-bottom: 0;
+  font-weight: var(--weight-semibold);
+}

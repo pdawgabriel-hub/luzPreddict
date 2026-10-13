@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 
 export type ApiState<T> =
-  | { status: 'loading' }
+  | { status: 'loading'; previous?: T } // `previous`: los últimos datos, para no vaciar la pantalla al recargar
   | { status: 'error'; error: ApiError }
   | { status: 'success'; data: T }
 
@@ -40,7 +40,9 @@ export function useApi<T>(load: (signal: AbortSignal) => Promise<T>, deps: reado
 
   const reload = useCallback(() => setAttempt((n) => n + 1), [])
 
-  if (result?.key !== key) return { status: 'loading', reload }
+  if (result?.key !== key) {
+    return result && 'data' in result ? { status: 'loading', previous: result.data, reload } : { status: 'loading', reload }
+  }
   if ('error' in result) return { status: 'error', error: result.error, reload }
   return { status: 'success', data: result.data, reload }
 }

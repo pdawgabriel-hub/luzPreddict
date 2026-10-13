@@ -90,7 +90,7 @@ describe('menú del móvil', () => {
     await user.click(menuButton())
     await user.click(within(nav()).getByRole('link', { name: 'Simulador' }))
     expect(menuButton()).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('heading', { level: 1, name: 'Simulador de consumo' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: '¿Cuándo me sale más barato?' })).toBeInTheDocument()
   })
 })
 
