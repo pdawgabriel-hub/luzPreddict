@@ -46,14 +46,25 @@ jobs:
       - name: Instalar dependencias
         run: python -m pip install -r requirements-pipeline.txt
 
+      # Sin mostrar el valor: solo dice qué le pasa (los errores típicos al pegarlo)
       - name: Comprobar el secreto DATABASE_URL
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Falta el secreto DATABASE_URL (Settings → Secrets and variables → Actions)"
+          fail() {
+            echo "::error::DATABASE_URL $1. Edítalo en Settings → Secrets and variables → Actions:" \
+              "debe ser la cadena de Neon tal cual, empezando por postgresql+psycopg://"
             exit 1
-          fi
+          }
+          [ -n "$DATABASE_URL" ] || fail "no existe o está vacío"
+          [[ "$DATABASE_URL" =~ [[:space:]] ]] && fail "tiene espacios o saltos de línea"
+          [[ "$DATABASE_URL" == *\'* || "$DATABASE_URL" == *\"* ]] && fail "tiene comillas"
+          [[ "$DATABASE_URL" == DATABASE_URL=* ]] && fail "empieza por 'DATABASE_URL=': pega solo el valor"
+          [[ "$DATABASE_URL" == postgresql://* || "$DATABASE_URL" == postgres://* ]] &&
+            fail "empieza por postgresql:// en lugar de postgresql+psycopg://"
+          [[ "$DATABASE_URL" == postgresql+psycopg://* ]] || fail "no empieza por postgresql+psycopg://"
+          echo "DATABASE_URL tiene el formato esperado"
 
       - name: Migraciones (Alembic)
+        id: migrate
         run: python -m alembic upgrade head
 
       - name: Histórico de REE
@@ -63,8 +74,9 @@ jobs:
         if: inputs.train
         run: python -m src.pipeline train
 
+      # Aunque falle la carga o el entrenamiento, siempre que se haya podido conectar
       - name: Resumen
-        if: always()
+        if: always() && steps.migrate.outcome == 'success'
         run: |
           python - >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           from sqlalchemy import func, select
