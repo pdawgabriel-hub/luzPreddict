@@ -150,6 +150,20 @@ make test      # tests
 
 `make help` muestra todos los comandos disponibles.
 
+### Con Docker
+
+Sin instalar Python ni Node: solo Docker con Compose.
+
+```bash
+make docker-up     # base de datos, API y web
+make docker-seed   # la primera vez: histórico de REE, entrenamiento y previsión de mañana
+make docker-down   # para todo (los datos se conservan)
+```
+
+La web queda en http://localhost:8080, con la API en las mismas rutas que en producción
+(http://localhost:8080/docs, `/v1/…`). PostgreSQL escucha en el puerto 5434 para no chocar con otro
+servidor local; `WEB_PORT` y `DB_PORT` cambian los puertos.
+
 ---
 
 ## Datos y licencia

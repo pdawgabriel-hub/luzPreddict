@@ -1,0 +1,78 @@
+# API, web y base de datos con un comando: make docker-up (ver README).
+# Los puertos solo se abren en 127.0.0.1 y se pueden cambiar con WEB_PORT y DB_PORT.
+# La API no publica el suyo: se llega a ella a través de la web (/v1, /api, /health y /docs).
+
+name: luzpreddict
+
+x-database-url: &database-url
+  DATABASE_URL: postgresql+psycopg://luz:luz@db:5432/luzpreddict
+
+x-pipeline-build: &pipeline-build
+  build:
+    context: .
+    target: pipeline
+  image: luzpreddict-pipeline
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: luz
+      POSTGRES_PASSWORD: luz
+      POSTGRES_DB: luzpreddict
+    ports:
+      - "127.0.0.1:${DB_PORT:-5434}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "luz", "-d", "luzpreddict"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # Aplica las migraciones pendientes y termina
+  migrate:
+    <<: *pipeline-build
+    command: ["alembic", "upgrade", "head"]
+    environment: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: api
+    image: luzpreddict-api
+    environment: *database-url
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: ./frontend
+    image: luzpreddict-web
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Ingesta y modelo bajo demanda: docker compose run --rm pipeline backfill|train|daily
+  pipeline:
+    <<: *pipeline-build
+    profiles: [pipeline]
+    entrypoint: ["python", "-m", "src.pipeline"]
+    command: ["daily"]
+    environment: *database-url
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint lint-py lint-web format test test-py test-web migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev clean
+.PHONY: help install lint lint-py lint-web format test test-py test-web migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev docker-up docker-seed docker-down clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
@@ -73,6 +73,17 @@ web-build: ## Compila la web para producción en frontend/dist
 
 dev: ## Arranca la API y la web a la vez (Ctrl+C para las dos)
 	$(MAKE) -j2 api web
+
+docker-up: ## Levanta base de datos, API y web con Docker (web en http://localhost:8080)
+	docker compose up -d --build
+
+docker-seed: ## Carga en Docker el histórico de REE, entrena el modelo y hace la previsión de mañana
+	docker compose run --rm pipeline backfill
+	docker compose run --rm pipeline train
+	docker compose run --rm pipeline daily
+
+docker-down: ## Para los contenedores de Docker (los datos se conservan; -v en docker compose down los borra)
+	docker compose down
 
 clean: ## Borra cachés de Python, pytest y ruff y la web compilada
 	find . -path ./venv -prune -o -path ./frontend/node_modules -prune -o -type d -name __pycache__ -exec rm -rf {} +

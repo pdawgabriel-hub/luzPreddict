@@ -1,0 +1,8 @@
+# Solo entra en la imagen lo que necesitan la API y el pipeline (nunca .env)
+*
+!src
+!alembic
+!alembic.ini
+!requirements.txt
+!requirements-pipeline.txt
+**/__pycache__
