@@ -21,6 +21,7 @@ type Props = {
   height?: number
   legend?: LegendItem[]
   valueLabel?: string // cabecera de la columna de valores en la tabla
+  categoryLabel?: string // cabecera de la primera columna (por defecto, "Hora"; "Día" si las barras son días)
   selectedIndex?: number // barra seleccionada, con borde
   onSelect?: (index: number) => void // si se da, cada barra es un botón (ratón, Intro/Espacio y flechas)
 }
@@ -28,7 +29,7 @@ type Props = {
 const MARGIN = { top: 8, right: 4, bottom: 22, left: 44 }
 
 /** Barras hora a hora (precio de un día, previsión, error por hora…). */
-export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor', selectedIndex, onSelect }: Props) {
+export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend = [], valueLabel = 'Valor', categoryLabel = 'Hora', selectedIndex, onSelect }: Props) {
   const [ref, width] = useWidth<HTMLDivElement>()
   const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1)
   const plotHeight = height - MARGIN.top - MARGIN.bottom
@@ -117,7 +118,7 @@ export function HourlyBars({ bars, ariaLabel, formatTick, height = 220, legend =
         </svg>
       </div>
       <Legend items={legend} />
-      <DataTable caption={ariaLabel} columns={['Hora', valueLabel]} rows={bars.map((b) => [b.name, b.display])} />
+      <DataTable caption={ariaLabel} columns={[categoryLabel, valueLabel]} rows={bars.map((b) => [b.name, b.display])} />
     </figure>
   )
 }

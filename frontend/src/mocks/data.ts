@@ -58,7 +58,13 @@ export function lastPublishedDay(now: Date): string {
 /** Precio de cada hora de un día; siempre el mismo para el mismo día. */
 export function dayPrices(day: string): HourPrice[] {
   const random = seeded(`precios-${day}`)
-  const level = 0.75 + random() * 0.5
+  // Como en la realidad, los días con más renovables son más baratos (con algo de ruido)
+  const mix = dayMix(day)
+  const total = Object.values(mix).reduce((a, b) => a + b, 0)
+  const renewable = Object.entries(mix)
+    .filter(([tech]) => RENEWABLE.has(tech))
+    .reduce((a, [, mwh]) => a + mwh, 0)
+  const level = 0.7 + (0.65 - renewable / total) * 1.5 + random() * 0.2
   const weekend = weekday(day) >= 5 ? 0.85 : 1
   return dayHours(day).map((instant) => ({
     instant,
