@@ -68,7 +68,8 @@ def _local_hour(ts: datetime) -> int:
 
 
 def _hour_range(window: Window) -> str:
-    return f"{_local_hour(window.start)}–{_local_hour(window.end)} h"
+    # Una franja que acaba a medianoche termina "a las 24", no "a las 0"
+    return f"{_local_hour(window.start)}–{_local_hour(window.end) or 24} h"
 
 
 def _day_name(day: date) -> str:

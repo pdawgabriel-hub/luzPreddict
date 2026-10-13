@@ -30,6 +30,12 @@ def test_forecast_digest_text():
     assert digest.text == f"{digest.title}\n{digest.body}"
 
 
+def test_window_ending_at_midnight_ends_at_24():
+    prices = [(ts, 300.0 if i >= 22 else 100.0) for i, ts in enumerate(local_day_hours(DAY))]
+
+    assert build_digest(prices, DAY, "published").body.splitlines()[1] == "Más cara: 22–24 h (0,300 €/kWh)"
+
+
 def test_structured_fields():
     digest = build_digest(PRICES, DAY, "forecast", model="lightgbm")
 
