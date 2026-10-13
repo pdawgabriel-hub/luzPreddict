@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { ApiError, getJson } from '../api/client'
-import type { Forecast, Prices } from '../api/types'
+import { getJson } from '../api/client'
+import { loadDay, type Day } from '../api/days'
+import type { Prices } from '../api/types'
 import { HourlyBars } from '../components/charts/HourlyBars'
 import { LineChart } from '../components/charts/LineChart'
 import { KpiCard } from '../components/KpiCard'
@@ -22,45 +23,17 @@ import {
   priciestWindow,
   tierCuts,
   tierOf,
-  type HourPrice,
   type Tier,
 } from '../lib/prices'
 import styles from './Panel.module.css'
 
 // --- Datos ---
 
-type Day = {
-  day: string
-  kind: 'published' | 'forecast'
-  hours: HourPrice[]
-  generatedAt?: string
-  disclaimer?: string
-}
-
 type PanelData = { today: Day; tomorrow: Day | null }
-
-const isNotFound = (error: unknown) => error instanceof ApiError && error.status === 404
-
-/** Mañana: el precio publicado si REE ya lo dio entero; si no, la previsión; si tampoco, nada. */
-async function loadTomorrow(day: string, signal: AbortSignal): Promise<Day | null> {
-  try {
-    const prices = await getJson<Prices>('/v1/prices', { date: day }, signal)
-    if (!prices.missing_days.length) return { day, kind: 'published', hours: prices.hours }
-  } catch (error) {
-    if (!isNotFound(error)) throw error
-  }
-  try {
-    const forecast = await getJson<Forecast>('/v1/forecast', { date: day }, signal)
-    return { day, kind: 'forecast', hours: forecast.hours, generatedAt: forecast.generated_at, disclaimer: forecast.disclaimer }
-  } catch (error) {
-    if (isNotFound(error)) return null
-    throw error
-  }
-}
 
 async function loadPanel(signal: AbortSignal): Promise<PanelData> {
   const today = await getJson<Prices>('/v1/prices', undefined, signal)
-  const tomorrow = await loadTomorrow(addDays(today.start, 1), signal)
+  const tomorrow = await loadDay(addDays(today.start, 1), signal)
   return { today: { day: today.start, kind: 'published', hours: today.hours }, tomorrow }
 }
 

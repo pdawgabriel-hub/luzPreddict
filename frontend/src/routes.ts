@@ -14,7 +14,7 @@ export const ROUTES: PageRoute[] = [
   { path: '/simulador', label: 'Simulador', title: '¿Cuándo me sale más barato?' },
   { path: '/planificador', label: 'Planificador', title: 'Organiza tu día' },
   { path: '/factura', label: 'Factura', title: '¿Me compensa el PVPC o un precio fijo?' },
-  { path: '/alertas', label: 'Alertas', title: 'Alertas de precio' },
+  { path: '/alertas', label: 'Alertas', title: 'Avísame cuando la luz…' },
   { path: '/modelo', label: 'Modelo', title: 'Cómo funciona la previsión' },
   { path: '/desarrolladores', label: 'API', title: 'API pública' },
 ]

@@ -4,6 +4,7 @@ import { afterEach, vi } from 'vitest'
 
 afterEach(() => {
   cleanup()
+  localStorage.clear() // las alertas de un test no pasan al siguiente
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.useRealTimers()
