@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { MAX_ALERTS, STORAGE_KEY, history, loadAlerts, matches, matchingHours, saveAlerts, type Alert } from './localAlerts'
+import { describe, expect, it, vi } from 'vitest'
+import { MAX_ALERTS, STORAGE_KEY, history, loadAlerts, matches, matchingHours, newAlertId, saveAlerts, type Alert } from './localAlerts'
 
 const alert = (patch: Partial<Alert> = {}): Alert => ({ id: 'a1', direction: 'below', threshold: 100, active: true, ...patch })
 const hour = (day: string, h: number, price: number) => ({ datetime: `${day}T${String(h).padStart(2, '0')}:00:00+02:00`, price })
@@ -33,6 +33,18 @@ describe('alertas guardadas en el navegador', () => {
 
     expect(loadAlerts(blocked)).toEqual([])
     expect(saveAlerts([alert()], blocked)).toBe(false)
+  })
+
+  it('sin almacenamiento disponible no hay alertas ni se pueden guardar', () => {
+    vi.stubGlobal('localStorage', undefined) // p. ej. un navegador que lo tiene desactivado
+    expect(loadAlerts()).toEqual([])
+    expect(saveAlerts([alert()])).toBe(false)
+  })
+
+  it('cada alerta tiene un id distinto, también sin crypto.randomUUID', () => {
+    expect(newAlertId()).not.toBe(newAlertId())
+    vi.stubGlobal('crypto', {})
+    expect(newAlertId()).toMatch(/^\d+-[a-z0-9]+$/)
   })
 
   it(`guardan como mucho ${MAX_ALERTS}`, () => {

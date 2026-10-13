@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test migrate backfill pipeline backtest train predict api api-types web web-mocks web-build dev clean
+.PHONY: help install lint format test migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -56,6 +56,9 @@ web: ## Arranca la web en http://localhost:5173 (reenvía /api, /v1 y /health a 
 
 web-mocks: ## Web con datos de ejemplo, sin API (SCENARIO=stale|error|slow para ver avisos, errores o cargas)
 	VITE_MOCK_SCENARIO=$(SCENARIO) npm --prefix frontend run dev:mocks
+
+web-coverage: ## Tests de la web con cobertura (falla si baja de los mínimos; informe en frontend/coverage)
+	npm --prefix frontend run test:coverage
 
 web-build: ## Compila la web para producción en frontend/dist
 	npm --prefix frontend run build

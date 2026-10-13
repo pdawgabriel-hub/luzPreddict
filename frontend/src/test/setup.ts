@@ -4,8 +4,10 @@ import { afterEach, vi } from 'vitest'
 
 afterEach(() => {
   cleanup()
-  localStorage.clear() // las alertas de un test no pasan al siguiente
+  // Primero se restauran los globales falsos (un test puede quitar localStorage o crypto)
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   vi.useRealTimers()
+  localStorage.clear() // las alertas de un test no pasan al siguiente
 })
