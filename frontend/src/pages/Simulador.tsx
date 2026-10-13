@@ -3,6 +3,7 @@ import { getJson, postJson } from '../api/client'
 import type { Catalog, Health, Prices, SimulateRequest, Simulation } from '../api/types'
 import { HourlyBars } from '../components/charts/HourlyBars'
 import { KpiCard } from '../components/KpiCard'
+import { NumberInput } from '../components/NumberInput'
 import { PageHeader } from '../components/PageHeader'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorState, LoadingState } from '../components/States'
@@ -146,7 +147,7 @@ function Form({ catalog, settings, update, today, tomorrow, tomorrowPublished }:
 
       {settings.appliance === CUSTOM && (
         <div className={styles.custom}>
-          <PowerInput value={settings.custom.power_kw} onChange={(power_kw) => update({ custom: { ...settings.custom, power_kw } })} />
+          <NumberInput label="Potencia (kW)" unit="kW" value={settings.custom.power_kw} min={0.1} max={15} onChange={(power_kw) => update({ custom: { ...settings.custom, power_kw } })} />
           <Stepper label="Duración (h)" value={settings.custom.hours} min={1} max={12} onChange={(hours) => update({ custom: { ...settings.custom, hours } })} />
         </div>
       )}
@@ -180,38 +181,6 @@ function Form({ catalog, settings, update, today, tomorrow, tomorrowPublished }:
       )}
       <p className={styles.hint}>Consumos típicos orientativos: cada aparato real consume distinto.</p>
     </section>
-  )
-}
-
-const MAX_POWER_KW = 15
-
-/** Potencia en kW: guarda lo que se escribe y solo la aplica si es válida (admite coma decimal). */
-function PowerInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  const [text, setText] = useState(formatNumber(value, 1))
-  const parsed = Number(text.replace(',', '.'))
-  const valid = text.trim() !== '' && parsed > 0 && parsed <= MAX_POWER_KW
-
-  return (
-    <label className={styles.input}>
-      <span>Potencia (kW)</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={text}
-        aria-invalid={!valid}
-        aria-describedby={valid ? undefined : 'potencia-error'}
-        onChange={(event) => {
-          setText(event.target.value)
-          const next = Number(event.target.value.replace(',', '.'))
-          if (next > 0 && next <= MAX_POWER_KW) onChange(next)
-        }}
-      />
-      {!valid && (
-        <span id="potencia-error" className={styles.inputError}>
-          Entre 0,1 y {MAX_POWER_KW} kW
-        </span>
-      )}
-    </label>
   )
 }
 
