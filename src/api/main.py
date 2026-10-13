@@ -14,7 +14,7 @@ from src.api.errors import error_responses, register_error_handlers
 from src.api.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from src.api.rate_limit import LIMIT_HEADERS, build_rate_limiter, rate_limit
 from src.api.routers import health
-from src.api.routers.public import best_hours, forecast, history, market, prices
+from src.api.routers.v1 import best_hours, forecast, history, market, prices
 from src.api.routers.web import model, tools
 from src.utils.config import Settings, get_settings
 from src.utils.logging import configure_logging

@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -48,3 +49,9 @@ def test_the_api_does_not_import_pandas_or_the_model():
     code = "import sys, src.api.main; print({'pandas', 'numpy', 'lightgbm', 'sklearn'} & set(sys.modules))"
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert result.stdout.strip() == "set()"
+
+
+def test_no_code_folder_is_called_public():
+    """Vercel trata las carpetas `public/` como ficheros estáticos y las deja fuera de la función de la API."""
+    src = Path(__file__).resolve().parents[1] / "src"
+    assert [p for p in src.rglob("public") if p.is_dir()] == []
