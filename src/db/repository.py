@@ -15,7 +15,7 @@ from datetime import date, datetime
 from itertools import islice
 from typing import Any, NamedTuple
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer, selectinload
 
@@ -233,6 +233,23 @@ def get_model_artifact(session: Session, version: str | None = None, include_dat
     if not include_data:
         query = query.options(defer(ModelArtifact.data))
     return session.scalars(query).first()
+
+
+def prune_model_binaries(session: Session, keep: int) -> int:
+    """Borra el binario de los modelos salvo los `keep` más recientes; los metadatos se conservan.
+
+    Cada modelo ocupa unos 2 MB y se entrena uno por semana. Las previsiones antiguas siguen
+    apuntando a su versión y la API lee sus métricas (p. ej. el nivel del intervalo).
+    Devuelve cuántos binarios se han borrado.
+    """
+    recent = select(ModelArtifact.version).order_by(ModelArtifact.trained_at.desc()).limit(keep)
+    statement = (
+        update(ModelArtifact)
+        .where(ModelArtifact.version.not_in(recent), func.length(ModelArtifact.data) > 0)
+        .values(data=b"")
+        .returning(ModelArtifact.version)
+    )
+    return len(session.execute(statement).all())
 
 
 # --- Error diario ---

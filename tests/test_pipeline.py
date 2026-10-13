@@ -23,12 +23,16 @@ def test_backfill_continues_from_the_last_saved_day(seeded):
     assert repository.last_generation_date(seeded) == LAST_DAY + timedelta(days=1)
 
 
-def test_train_saves_the_model_in_the_database(seeded, fast_model):
+def test_train_saves_the_model_in_the_database(seeded, fast_model, monkeypatch):
+    pruned = []
+    monkeypatch.setattr(repository, "prune_model_binaries", lambda session, keep: pruned.append(keep) or 0)
+
     version = pipeline.train(seeded, metrics_days=3)
 
     stored = repository.get_model_artifact(seeded)
     assert stored.version == version
     assert set(stored.metrics["models"]) == {"lightgbm", "precio_ayer", "media_7_dias"}
+    assert pruned == [pipeline.KEEP_MODEL_BINARIES]  # y se borran los binarios antiguos
 
 
 def test_daily_saves_a_forecast_for_the_first_unpublished_day(seeded, sessions, fast_model):
@@ -122,11 +126,11 @@ def test_github_summary_describes_the_daily_task(seeded, sessions):
 
     summary = pipeline.github_summary(result)
 
-    assert summary.startswith("### Tarea diaria · ⏳ pendiente")
+    assert summary.startswith("### Tarea diaria · pendiente")
     assert f"| Previsión | {result.forecast.day:%d/%m/%Y} (24 h) · ejecución {result.run_id} |" in summary
     assert "| Modelo | precio_ayer |" in summary
     assert "| Hora más barata | " in summary and " €/MWh |" in summary
-    assert "> ⚠️ Respaldo activado: LookupError" in summary
+    assert "> Respaldo activado: LookupError" in summary
     # Sin líneas vacías dentro de la tabla: la partirían en dos
     table = summary.split("\n\n")[1]
     assert all(line.startswith("|") for line in table.strip().splitlines())
@@ -148,5 +152,47 @@ def test_daily_command_reports_to_github_only_inside_actions(seeded, sessions, m
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
     pipeline.main(["daily"])
 
-    assert summary.read_text(encoding="utf-8").startswith("### Tarea diaria · ✅ completo")
+    assert summary.read_text(encoding="utf-8").startswith("### Tarea diaria · completo")
     assert output.read_text(encoding="utf-8") == f"status=completo\nforecast_day={result.forecast.day.isoformat()}\n"
+
+
+METRICS = {
+    "period": {"start": "2026-07-16", "end": "2026-10-13", "days": 90},
+    "models": {
+        "precio_ayer": {"mae": 33.81, "rmse": 50.1, "bias": -0.5},
+        "lightgbm": {"mae": 22.94, "rmse": 31.2, "bias": -3.1},
+        "media_7_dias": {"mae": 32.9, "rmse": 45.0, "bias": -2.0},
+    },
+    "interval": {"level": 0.8, "coverage": 0.702, "width": 69.33, "n": 2160},
+}
+
+
+def test_training_summary_ranks_the_models_and_shows_the_interval():
+    summary = pipeline.training_summary("20261013-173857", METRICS)
+
+    assert summary.startswith("### Modelo 20261013-173857")
+    assert "Backtest de los últimos 90 días (2026-07-16 – 2026-10-13)" in summary
+    models = [line.split(" | ")[0].removeprefix("| ") for line in summary.splitlines() if "€/MWh |" in line]
+    assert models == ["lightgbm", "media_7_dias", "precio_ayer"]  # de menor a mayor error
+    assert "| lightgbm | 22,9 €/MWh | 31,2 €/MWh | -3,1 €/MWh |" in summary
+    assert "Intervalo del 80%: el precio real cayó dentro el 70,2% de las horas." in summary
+
+
+def test_warns_in_actions_when_the_model_does_not_beat_the_baselines(monkeypatch, tmp_path, capsys):
+    worse = {**METRICS, "models": {**METRICS["models"], "lightgbm": {"mae": 40.0, "rmse": 55.0, "bias": 1.0}}}
+    assert pipeline.beats_baselines(METRICS) and not pipeline.beats_baselines(worse)
+
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    pipeline.report_training_to_github("v", worse)
+    assert capsys.readouterr().out == ""  # en local, nada
+
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    pipeline.report_training_to_github("v", worse)
+    assert capsys.readouterr().out.startswith("::warning::El modelo v no mejora")
+    assert summary.read_text(encoding="utf-8").startswith("### Modelo v")
+
+    pipeline.report_training_to_github("v", METRICS)
+    assert capsys.readouterr().out == ""  # si mejora, sin aviso

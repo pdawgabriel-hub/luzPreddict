@@ -187,6 +187,18 @@ def test_model_metadata_without_reading_the_binary(db_session):
     assert repo.get_model_artifact(db_session, "v1", include_data=False).training_rows == 17_520
 
 
+def test_old_model_binaries_are_pruned_but_their_metadata_is_kept(db_session):
+    for day in range(1, 7):  # seis modelos, del 1 al 6 de octubre
+        repo.save_model_artifact(db_session, _artifact(f"v{day}", datetime(2026, 10, day, 19, tzinfo=UTC)))
+
+    assert repo.prune_model_binaries(db_session, keep=4) == 2
+    db_session.expire_all()
+
+    assert [repo.get_model_artifact(db_session, f"v{day}").data for day in range(1, 7)] == [b"", b""] + [b"modelo"] * 4
+    assert repo.get_model_artifact(db_session, "v1").metrics == {"models": {"lightgbm": {"mae": 16.0}}}
+    assert repo.prune_model_binaries(db_session, keep=4) == 0  # ya estaban borrados
+
+
 def test_no_model_in_an_empty_database(db_session):
     assert repo.get_model_artifact(db_session) is None
 

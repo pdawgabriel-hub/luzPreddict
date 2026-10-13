@@ -10,8 +10,9 @@ La tarea diaria es idempotente: se puede repetir (por ejemplo, el reintento de
 las 21:30 UTC) sin duplicar datos ni previsiones. Si REE aún no ha publicado los precios de
 mañana, termina como "pendiente".
 
-En GitHub Actions, `daily` deja además un resumen en la página de la ejecución y su
-estado como salida del paso (`status`), para los pasos siguientes del workflow.
+En GitHub Actions, `daily` y `train` dejan además un resumen en la página de la
+ejecución; `daily`, también su estado como salida del paso (`status`), para los pasos
+siguientes del workflow.
 """
 
 import argparse
@@ -43,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 # Días ya publicados cuyo error se recalcula en cada ejecución (por si REE corrige algún precio)
 ERROR_DAYS = 7
+# Modelos que conservan su binario (el resto, solo los metadatos): cuatro semanas para volver atrás
+KEEP_MODEL_BINARIES = 4
 
 
 @dataclass(frozen=True)
@@ -92,11 +95,17 @@ def backfill(
 
 
 def train(session: Session, metrics_days: int | None = None) -> str:
-    """Entrena con el histórico guardado y guarda el modelo. Devuelve su versión."""
+    """Entrena con el histórico guardado y guarda el modelo. Devuelve su versión.
+
+    Los modelos antiguos conservan sus metadatos pero pierden el binario (ver `KEEP_MODEL_BINARIES`).
+    """
     kwargs = {"metrics_days": metrics_days} if metrics_days else {}
     artifact = train_final_model(dataset.load_clean_prices(session), **kwargs)
     save_to_db(session, artifact)
     logger.info("Modelo %s guardado en la base de datos", artifact.metadata.version)
+    pruned = repository.prune_model_binaries(session, keep=KEEP_MODEL_BINARIES)
+    if pruned:
+        logger.info("Borrado el binario de %d modelos antiguos (se conservan sus metadatos)", pruned)
     return artifact.metadata.version
 
 
@@ -226,7 +235,7 @@ def github_summary(result: DailyResult) -> str:
     forecast = result.forecast
     cheapest, priciest = forecast.prices.idxmin(), forecast.prices.idxmax()
     model = f"{forecast.model} {forecast.model_version}" if forecast.model_version else forecast.model
-    status = "✅ completo" if result.status == "completo" else "⏳ pendiente: REE aún no ha publicado mañana"
+    status = "completo" if result.status == "completo" else "pendiente: REE aún no ha publicado mañana"
     last_day = result.backfill.last_price_day
     rows = [
         ("Último día con precio", f"{last_day:%d/%m/%Y}" if last_day else "ninguno"),
@@ -240,18 +249,53 @@ def github_summary(result: DailyResult) -> str:
     ]
     lines = [f"### Tarea diaria · {status}", "", "| | |", "|---|---|", *(f"| {k} | {v} |" for k, v in rows)]
     if forecast.used_fallback:
-        lines += ["", f"> ⚠️ Respaldo activado: {forecast.fallback_reason}"]
+        lines += ["", f"> Respaldo activado: {forecast.fallback_reason}"]
     return "\n".join(lines) + "\n"
 
 
+def training_summary(version: str, metrics: dict) -> str:
+    """Resumen en Markdown del entrenamiento: error frente a las referencias y cobertura del intervalo."""
+    period, models = metrics["period"], metrics["models"]
+    lines = [
+        f"### Modelo {version}",
+        "",
+        f"Backtest de los últimos {period['days']} días ({period['start']} – {period['end']}), €/MWh:",
+        "",
+        "| Modelo | Error medio | RMSE | Sesgo |",
+        "|---|---|---|---|",
+        *(
+            f"| {name} | {_mwh(m['mae'])} | {_mwh(m['rmse'])} | {_mwh(m['bias'])} |"
+            for name, m in sorted(models.items(), key=lambda item: item[1]["mae"])
+        ),
+    ]
+    if interval := metrics.get("interval"):
+        coverage = f"{interval['coverage']:.1%}".replace(".", ",")
+        lines += ["", f"Intervalo del {interval['level']:.0%}: el precio real cayó dentro el {coverage} de las horas."]
+    return "\n".join(lines) + "\n"
+
+
+def beats_baselines(metrics: dict) -> bool:
+    models = metrics["models"]
+    return all(models["lightgbm"]["mae"] < m["mae"] for name, m in models.items() if name != "lightgbm")
+
+
+def _append_to_github(variable: str, text: str) -> None:
+    """Escribe en el fichero de una variable de GitHub Actions; fuera de Actions no hace nada."""
+    if path := os.environ.get(variable):
+        with open(path, "a", encoding="utf-8") as file:
+            file.write(text)
+
+
 def report_to_github(result: DailyResult) -> None:
-    """Fuera de GitHub Actions (sin sus variables de entorno) no hace nada."""
-    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        with open(summary, "a", encoding="utf-8") as file:
-            file.write(github_summary(result))
-    if output := os.environ.get("GITHUB_OUTPUT"):
-        with open(output, "a", encoding="utf-8") as file:
-            file.write(f"status={result.status}\nforecast_day={result.forecast.day.isoformat()}\n")
+    _append_to_github("GITHUB_STEP_SUMMARY", github_summary(result))
+    _append_to_github("GITHUB_OUTPUT", f"status={result.status}\nforecast_day={result.forecast.day.isoformat()}\n")
+
+
+def report_training_to_github(version: str, metrics: dict) -> None:
+    _append_to_github("GITHUB_STEP_SUMMARY", training_summary(version, metrics))
+    if os.environ.get("GITHUB_ACTIONS") and not beats_baselines(metrics):
+        # Anotación amarilla en la ejecución: el modelo se guarda igual, pero conviene revisarlo
+        print(f"::warning::El modelo {version} no mejora a todas las referencias en el backtest: revisa sus métricas")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -273,7 +317,9 @@ def main(argv: list[str] | None = None) -> None:
             backfill(session, full=args.full)
     elif args.command == "train":
         with session_scope() as session:
-            train(session, metrics_days=args.metrics_days)
+            version = train(session, metrics_days=args.metrics_days)
+            saved = repository.get_model_artifact(session, version, include_data=False)
+            report_training_to_github(version, saved.metrics)
     elif args.command == "predict":
         with session_scope() as session:
             print_forecast(forecast_next_day(session, args.day))

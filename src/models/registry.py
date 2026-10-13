@@ -170,4 +170,6 @@ def load_from_db(
     if row is None:
         detail = f"la versión {version}" if version else "ningún modelo"
         raise LookupError(f"No hay {detail} en la base de datos: ejecuta make train")
+    if not row.data:
+        raise LookupError(f"El binario del modelo {row.version} se borró para ahorrar espacio: usa uno más reciente")
     return deserialize(row.data, expected_features)

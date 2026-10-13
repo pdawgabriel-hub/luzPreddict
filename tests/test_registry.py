@@ -10,6 +10,7 @@ import joblib
 import pandas as pd
 import pytest
 
+from src.db import repository
 from src.models import lightgbm_model, train
 from src.models.lightgbm_model import LightGBMForecaster
 from src.models.registry import (
@@ -189,6 +190,15 @@ def test_loads_the_latest_model_or_a_given_version(db_session, artifact):
 
 def test_no_model_in_the_database_is_a_clear_error(db_session):
     with pytest.raises(LookupError, match="make train"):
+        load_from_db(db_session)
+
+
+def test_a_model_whose_binary_was_pruned_is_a_clear_error(db_session, artifact):
+    save_to_db(db_session, artifact)
+    repository.prune_model_binaries(db_session, keep=0)
+    db_session.expire_all()
+
+    with pytest.raises(LookupError, match="se borró para ahorrar espacio"):
         load_from_db(db_session)
 
 
