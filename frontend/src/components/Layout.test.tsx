@@ -40,7 +40,8 @@ describe('navegación', () => {
   it.each(ROUTES)('$path tiene su título de página y de pestaña', async ({ path, title }) => {
     renderApp(path)
 
-    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
+    // findBy: la página de la API se carga aparte (React.lazy)
+    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeInTheDocument()
     expect(document.title).toBe(`${title} · luzPreddict`)
   })
 

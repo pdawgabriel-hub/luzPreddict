@@ -116,3 +116,38 @@ export function getJson<T>(path: string, query?: Query, signal?: AbortSignal): P
 export function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   return request<T>('POST', path, body, signal)
 }
+
+export type RawResponse = { status: number; headers: Record<string, string>; body: unknown; ms: number }
+
+/** Cabeceras que interesa enseñar en la consola de la API. */
+export const SHOWN_HEADERS = ['content-type', 'cache-control', 'x-request-id', 'retry-after']
+
+/**
+ * Petición GET tal cual, sin reintentos ni conversión a ApiError: para la consola de la
+ * página de desarrolladores, que enseña el estado, las cabeceras y el cuerpo de la respuesta.
+ */
+export async function inspect(path: string, signal?: AbortSignal): Promise<RawResponse> {
+  const started = performance.now()
+  if (import.meta.env.VITE_USE_MOCKS === '1') {
+    const { mockRequest } = await import('../mocks')
+    const headers = { 'content-type': 'application/json', 'x-request-id': 'datos-de-ejemplo' }
+    try {
+      const body = await mockRequest('GET', path, undefined, { signal })
+      return { status: 200, headers, body, ms: performance.now() - started }
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error
+      const body = { error: { code: error.code, message: error.message, request_id: error.requestId, details: error.details } }
+      return { status: error.status, headers, body, ms: performance.now() - started }
+    }
+  }
+  const response = await fetch(path, { signal })
+  const headers = Object.fromEntries(SHOWN_HEADERS.flatMap((name) => (response.headers.has(name) ? [[name, response.headers.get(name) as string]] : [])))
+  const text = await response.text()
+  let body: unknown = text
+  try {
+    body = JSON.parse(text)
+  } catch {
+    // No es JSON (p. ej. la página de error de un proxy): se enseña el texto
+  }
+  return { status: response.status, headers, body, ms: performance.now() - started }
+}

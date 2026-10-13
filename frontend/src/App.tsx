@@ -1,5 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
+import { LoadingState } from './components/States'
 import Alertas from './pages/Alertas'
 import Factura from './pages/Factura'
 import Historico from './pages/Historico'
@@ -7,13 +9,11 @@ import Mercado from './pages/Mercado'
 import Modelo from './pages/Modelo'
 import NotFound from './pages/NotFound'
 import Panel from './pages/Panel'
-import Placeholder from './pages/Placeholder'
 import Planificador from './pages/Planificador'
 import Simulador from './pages/Simulador'
-import { ROUTES } from './routes'
 
-// Páginas ya hechas; el resto aún muestra el aviso de "en construcción"
-const PAGES = new Set(['/', '/historico', '/mercado', '/simulador', '/planificador', '/factura', '/alertas', '/modelo'])
+// Se carga aparte: lleva el esquema OpenAPI completo, que solo hace falta en esta página
+const Desarrolladores = lazy(() => import('./pages/Desarrolladores'))
 
 export default function App() {
   return (
@@ -27,9 +27,14 @@ export default function App() {
         <Route path="/factura" element={<Factura />} />
         <Route path="/alertas" element={<Alertas />} />
         <Route path="/modelo" element={<Modelo />} />
-        {ROUTES.filter((route) => !PAGES.has(route.path)).map((route) => (
-          <Route key={route.path} path={route.path} element={<Placeholder title={route.title} />} />
-        ))}
+        <Route
+          path="/desarrolladores"
+          element={
+            <Suspense fallback={<LoadingState label="Cargando la documentación de la API…" />}>
+              <Desarrolladores />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

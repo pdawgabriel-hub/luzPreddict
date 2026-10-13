@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 // navegador ve un solo origen, como en Vercel, donde web y API comparten dominio.
 // Con barra final: una página de la web que empiece igual (p. ej. /api-algo) no va a la API.
 const API_URL = process.env.API_URL ?? 'http://localhost:8000'
-const API_PATHS = ['/api/', '/v1/', '/health']
+const API_PATHS = ['/api/', '/v1/', '/health', '/docs', '/openapi.json']
 
 export default defineConfig({
   plugins: [react()],
