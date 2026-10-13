@@ -59,6 +59,7 @@ export function formatHourRange(iso: string, hours = 1): string {
 }
 
 const dayFormat = new Intl.DateTimeFormat(LOCALE, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
+const weekdayDayFormat = new Intl.DateTimeFormat(LOCALE, { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' })
 const shortDayFormat = new Intl.DateTimeFormat(LOCALE, { timeZone: 'UTC', day: 'numeric', month: 'short' })
 
 // Los días de la API (AAAA-MM-DD) son días de Madrid: se formatean como fechas sin hora
@@ -72,4 +73,14 @@ export function formatDay(day: string): string {
 /** "3 oct". */
 export function formatShortDay(day: string): string {
   return shortDayFormat.format(asDate(day)).replace('.', '')
+}
+
+/** "dom 20 sep" (para las filas del mapa de calor). */
+export function formatWeekdayDay(day: string): string {
+  return weekdayDayFormat.format(asDate(day)).replace(/[.,]/g, '')
+}
+
+/** "del 14 sep al 13 oct". */
+export function formatPeriod(start: string, end: string): string {
+  return `del ${formatShortDay(start)} al ${formatShortDay(end)}`
 }

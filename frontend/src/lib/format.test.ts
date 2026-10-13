@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { formatDay, formatEuros, formatHourRange, formatKwh, formatMwh, formatNumber, formatPercent, formatShortDay, formatTime, madridHour } from './format'
+import {
+  formatDay,
+  formatEuros,
+  formatHourRange,
+  formatKwh,
+  formatMwh,
+  formatNumber,
+  formatPercent,
+  formatPeriod,
+  formatShortDay,
+  formatTime,
+  formatWeekdayDay,
+  madridHour,
+} from './format'
 
 describe('números', () => {
   it('usan coma decimal y punto de miles', () => {
@@ -45,6 +58,11 @@ describe('fechas', () => {
   it('se escriben como en el prototipo', () => {
     expect(formatDay('2026-10-03')).toBe('sábado 3 de octubre')
     expect(formatShortDay('2026-10-03')).toBe('3 oct')
+  })
+
+  it('día de la semana abreviado y periodos', () => {
+    expect(formatWeekdayDay('2026-10-04')).toBe('dom 4 oct')
+    expect(formatPeriod('2026-10-01', '2026-10-13')).toBe('del 1 oct al 13 oct')
   })
 
   it('un día de la API es un día de Madrid, sin desplazarse por la zona horaria', () => {
