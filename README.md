@@ -131,9 +131,16 @@ flowchart LR
 
 ### Fase 9 — Complementación
 - Límite de peticiones en la API
-- Previsiones de demanda, eólica y solar como variables del modelo
-- Intervalos de predicción
-- Docker y soporte para Canarias, Baleares, Ceuta y Melilla
+- Intervalos de predicción: un rango probable para cada hora, en el que cae el precio real 8 de cada 10 veces
+- Docker para levantar la base de datos, la API y la web con un comando
+
+### Mejoras posibles
+Quedan fuera porque necesitan [ESIOS](https://api.esios.ree.es), la API de REE que pide token: la pública
+que usa el proyecto no tiene estos datos.
+
+- **Previsiones de demanda, eólica y solar como variables del modelo.** La API pública no tiene las de
+  eólica y solar, y la de demanda no cubre el día siguiente entero cuando se hace la previsión.
+- **Canarias, Baleares, Ceuta y Melilla.** La API pública solo publica el PVPC peninsular.
 
 ---
 
@@ -169,5 +176,6 @@ servidor local; `WEB_PORT` y `DB_PORT` cambian los puertos.
 ## Datos y licencia
 
 - Los datos proceden de la [API pública de Red Eléctrica (REE)](https://www.ree.es/es/apidatos).
+- Los precios y la previsión son los del sistema peninsular.
 - Las previsiones son orientativas y no garantizan el precio final.
 - Código bajo licencia [MIT](LICENSE).
