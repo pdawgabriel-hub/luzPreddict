@@ -32,6 +32,8 @@ describe('Modelo', () => {
 
     const backtest = screen.getByRole('table', { name: 'Comparativa de modelos' })
     expect(within(backtest).getAllByRole('rowheader').map((r) => r.textContent?.trim())).toEqual(['LightGBM En uso', 'Media 7 días', 'Precio de ayer'])
+    expect(screen.getByText(/el precio real cayó dentro en el 79,5 % de las horas \(se busca el 80 %\), con un rango medio de 54,8 €\/MWh\./)).toBeInTheDocument()
+    expect(screen.getByText(/^Rango probable: el precio real cayó dentro en el \d+ % de las \d+ horas evaluadas que lo tienen\.$/)).toBeInTheDocument()
   })
 
   it('las referencias se calculan con los precios y se comparan por tipo de día', async () => {
@@ -40,6 +42,7 @@ describe('Modelo', () => {
 
     await user.click(screen.getByRole('button', { name: 'Precio de ayer' }))
     expect(metrics()).toHaveTextContent(/Error medio por hora · Precio de ayer[\d,]+ €\/MWh14 días evaluados/)
+    expect(screen.queryByText(/^Rango probable:/)).not.toBeInTheDocument() // las referencias no tienen rango
     expect(screen.getByRole('img', { name: 'Precio real y previsión de Precio de ayer, en €/MWh' })).toBeInTheDocument()
 
     const dayTypes = screen.getByRole('table', { name: 'Laborables frente a fin de semana' })

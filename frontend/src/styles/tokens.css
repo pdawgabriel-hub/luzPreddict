@@ -69,6 +69,7 @@
   --color-chart-line: #1f4e9c;
   --color-chart-band: #d6e2f5; /* banda mínimo–máximo */
   --color-chart-error: #fce3b5; /* área de diferencia entre previsión y real */
+  --color-forecast-band: #fdecc8; /* rango probable de la previsión (intervalo de predicción) */
   --color-chart-axis: #0e1726;
   --color-chart-neutral: #6b7280;
   --color-chart-positive: #2e7d5b;

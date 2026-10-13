@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { dayHours, toMadridIso } from './dates'
 import { groupByDay } from './history'
-import { baselineForecast, evaluateBaseline, mae, maeByDay, maeByDayType, maeByHour, type EvaluatedDay } from './model'
+import { baselineForecast, evaluateBaseline, intervalCoverage, mae, maeByDay, maeByDayType, maeByHour, type EvaluatedDay } from './model'
 
 /** Días seguidos desde el 1 de octubre de 2026; cada uno con precio = (día + 1) × 10 en todas las horas. */
 function days(n: number, price = (d: number, _h: number) => (d + 1) * 10) {
@@ -54,5 +54,22 @@ describe('errores', () => {
     ])
     expect(maeByDayType(evaluated)).toEqual({ workdays: { mae: 20, days: 1 }, weekend: { mae: 10, days: 1 } })
     expect(mae([])).toBeNull()
+  })
+
+  it('cobertura del rango probable: solo cuentan las horas que lo tienen, con los bordes dentro', () => {
+    const withRange: EvaluatedDay[] = [
+      {
+        day: '2026-10-09',
+        points: [
+          { hour: 0, actual: 100, predicted: 110, lower: 90, upper: 130 }, // dentro
+          { hour: 1, actual: 100, predicted: 70, lower: 50, upper: 90 }, // fuera
+          { hour: 2, actual: 100, predicted: 100, lower: 100, upper: 100 }, // en el borde
+          { hour: 3, actual: 100, predicted: 100, lower: null, upper: null }, // sin rango
+        ],
+      },
+    ]
+
+    expect(intervalCoverage(withRange)).toEqual({ coverage: 2 / 3, hours: 3 })
+    expect(intervalCoverage(evaluated)).toBeNull()
   })
 })

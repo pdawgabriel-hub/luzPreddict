@@ -12,7 +12,7 @@ import { useNow } from '../hooks/useNow'
 import { addDays, daysBetween, madridDate } from '../lib/dates'
 import { formatDay, formatMwh, formatNumber, formatPercent, formatPeriod, formatShortDay, madridHour } from '../lib/format'
 import { groupByDay } from '../lib/history'
-import { BASELINES, MODEL_LABELS, evaluateBaseline, mae, maeByDay, maeByDayType, maeByHour, type EvaluatedDay } from '../lib/model'
+import { BASELINES, MODEL_LABELS, evaluateBaseline, intervalCoverage, mae, maeByDay, maeByDayType, maeByHour, type EvaluatedDay } from '../lib/model'
 import styles from './Modelo.module.css'
 
 const EVAL_DAYS = 14 // días evaluados en las gráficas
@@ -46,7 +46,9 @@ async function loadForecast(day: string, signal: AbortSignal): Promise<Forecast 
 function lightgbmDays(forecasts: (Forecast | null)[]): EvaluatedDay[] {
   return forecasts.flatMap((f) => {
     if (!f || f.model !== 'lightgbm') return []
-    const points = f.hours.flatMap((h) => (h.actual === null ? [] : [{ hour: madridHour(h.datetime), actual: h.actual, predicted: h.price }]))
+    const points = f.hours.flatMap((h) =>
+      h.actual === null ? [] : [{ hour: madridHour(h.datetime), actual: h.actual, predicted: h.price, lower: h.lower, upper: h.upper }],
+    )
     return points.length ? [{ day: f.date, points }] : []
   })
 }
@@ -171,6 +173,7 @@ function ModelCharts({ data, model }: { data: ModelData; model: ModelName }) {
   const best = [...byDay].sort((a, b) => a.mae - b.mae)[0]
   const worstDay = [...byDay].sort((a, b) => b.mae - a.mae)[0]
   const shownMae = mae(shown)
+  const covered = model === 'lightgbm' ? intervalCoverage(evaluated) : null
 
   return (
     <>
@@ -215,6 +218,12 @@ function ModelCharts({ data, model }: { data: ModelData; model: ModelName }) {
           height={260}
           zeroBased
         />
+        {covered && (
+          <p className={styles.hint}>
+            Rango probable: el precio real cayó dentro en el {formatPercent(covered.coverage * 100)} de las {covered.hours} horas evaluadas que lo
+            tienen.
+          </p>
+        )}
       </section>
 
       <div className={styles.pair}>
@@ -367,6 +376,13 @@ function Backtest({ report }: { report: ModelReport }) {
         </table>
       </div>
       <p className={styles.hint}>Sesgo negativo: la previsión se queda corta de media. RMSE castiga más los errores grandes.</p>
+      {backtest.interval && (
+        <p className={styles.hint}>
+          Además de la previsión, LightGBM da un rango probable para cada hora. En el backtest, el precio real cayó dentro en el{' '}
+          {formatPercent(backtest.interval.coverage * 100, 1)} de las horas (se busca el {formatPercent(backtest.interval.level * 100)}), con un rango
+          medio de {mwh(backtest.interval.width)}.
+        </p>
+      )}
     </section>
   )
 }

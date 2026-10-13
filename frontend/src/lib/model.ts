@@ -13,8 +13,8 @@ export const MODEL_LABELS: Record<string, string> = {
 export const BASELINES = ['media_7_dias', 'precio_ayer'] as const
 export type Baseline = (typeof BASELINES)[number]
 
-/** Una hora evaluada: hora de reloj, precio real y previsión (€/MWh). */
-export type Point = { hour: number; actual: number; predicted: number }
+/** Una hora evaluada: hora de reloj, precio real y previsión (€/MWh), con su rango probable si lo tiene. */
+export type Point = { hour: number; actual: number; predicted: number; lower?: number | null; upper?: number | null }
 export type EvaluatedDay = { day: string; points: Point[] }
 
 const present = (values: (number | null)[]) => values.filter((v): v is number => v !== null)
@@ -50,6 +50,14 @@ const errors = (points: readonly Point[]) => points.map((p) => Math.abs(p.predic
 export function mae(days: readonly EvaluatedDay[]): number | null {
   const all = days.flatMap((d) => errors(d.points))
   return all.length ? mean(all) : null
+}
+
+/** Parte de las horas con rango probable en que el precio real cayó dentro (0-1), o null si ninguna lo tiene. */
+export function intervalCoverage(days: readonly EvaluatedDay[]): { coverage: number; hours: number } | null {
+  const points = days.flatMap((d) => d.points).filter((p) => p.lower != null && p.upper != null)
+  if (!points.length) return null
+  const inside = points.filter((p) => (p.lower as number) <= p.actual && p.actual <= (p.upper as number)).length
+  return { coverage: inside / points.length, hours: points.length }
 }
 
 /** Error medio de cada hora del día (0-23). */

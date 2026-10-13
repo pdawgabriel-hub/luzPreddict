@@ -12,7 +12,13 @@ export type Series = {
   dashed?: boolean
 }
 
-export type Band = { label: string; color: string; lower: (number | null)[]; upper: (number | null)[] }
+export type Band = {
+  label: string
+  color: string
+  lower: (number | null)[]
+  upper: (number | null)[]
+  tableColumns?: [string, string] // si se da, la tabla accesible incluye los límites con estas cabeceras
+}
 
 type Props = {
   labels: string[] // eje X, uno por punto (pueden ir vacíos para no saturar el eje)
@@ -86,8 +92,11 @@ export function LineChart({ labels, tableLabels = labels, series, ariaLabel, for
       <Legend items={legend} />
       <DataTable
         caption={ariaLabel}
-        columns={[xLabel, ...series.map((s) => s.label)]}
-        rows={tableLabels.map((label, i) => [label, ...series.map((s) => (s.values[i] === null ? '—' : formatValue(s.values[i] as number)))])}
+        columns={[xLabel, ...series.map((s) => s.label), ...(band?.tableColumns ?? [])]}
+        rows={tableLabels.map((label, i) => [
+          label,
+          ...[...series.map((s) => s.values[i]), ...(band?.tableColumns ? [band.lower[i], band.upper[i]] : [])].map((v) => (v === null ? '—' : formatValue(v))),
+        ])}
       />
     </figure>
   )

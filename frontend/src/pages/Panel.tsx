@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { getJson } from '../api/client'
-import { loadDay, type Day } from '../api/days'
+import { forecastRange, loadDay, rangeNote, type Day } from '../api/days'
 import type { Prices } from '../api/types'
 import { HourlyBars } from '../components/charts/HourlyBars'
 import { LineChart } from '../components/charts/LineChart'
@@ -225,6 +225,11 @@ function DayBars({ day, selected, onSelect, current }: { day: Day; selected: num
         <span className="muted">
           {formatMwh(hour.price)} €/MWh · {forecast ? 'previsión, ' : ''}hora {TIER_LABELS[tier]}
         </span>
+        {forecast && hour.lower != null && hour.upper != null && (
+          <span className="muted">
+            Probablemente entre {formatKwh(hour.lower)} y {kwh(hour.upper)}
+          </span>
+        )}
       </p>
       <HourlyBars
         ariaLabel={`${forecast ? 'Previsión del precio' : 'Precio'} por horas del ${formatDay(day.day)}, en €/kWh`}
@@ -253,6 +258,8 @@ function Compare({ today, tomorrow }: { today: Day; tomorrow: Day }) {
   const length = Math.min(today.hours.length, tomorrow.hours.length)
   const cheaper = cheaperHours(today.hours, tomorrow.hours)
   const label = tomorrow.kind === 'published' ? 'Mañana (publicado)' : 'Mañana (previsión)'
+  const range = forecastRange(tomorrow)
+  const note = range && rangeNote(tomorrow.intervalLevel)
 
   return (
     <>
@@ -272,10 +279,22 @@ function Compare({ today, tomorrow }: { today: Day; tomorrow: Day }) {
             dashed: true,
           },
         ]}
+        band={
+          range
+            ? {
+                label: 'Rango probable de mañana',
+                color: 'var(--color-forecast-band)',
+                lower: range.lower.slice(0, length),
+                upper: range.upper.slice(0, length),
+                tableColumns: ['Mañana, mínimo probable', 'Mañana, máximo probable'],
+              }
+            : undefined
+        }
         formatTick={(v) => formatKwh(v, 2)}
         formatValue={kwh}
         height={260}
       />
+      {note && <p className={`muted ${styles.note}`}>{note}</p>}
     </>
   )
 }

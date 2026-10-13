@@ -83,9 +83,24 @@ describe('Panel con datos de ejemplo', () => {
     expect(screen.getByRole('img', { name: /^Previsión del precio por horas del miércoles 7 de octubre/ })).toBeInTheDocument()
     expect(screen.getByText(/Previsión orientativa/)).toBeInTheDocument()
 
+    expect(screen.getByText(/^Probablemente entre [\d,]+ y [\d,]+ €\/kWh$/)).toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Comparar' }))
     expect(screen.getByText(/^Mañana sale más barato en \d+ de 24 horas\.$/)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Precio de hoy frente a la previsión de mañana, en €/kWh' })).toBeInTheDocument()
+    expect(screen.getByTestId('band')).toBeInTheDocument()
+    expect(screen.getByText('Rango probable de mañana')).toBeInTheDocument()
+    expect(screen.getByText('En 8 de cada 10 horas, el precio real queda dentro de la zona sombreada.')).toBeInTheDocument()
+  })
+
+  it('con el precio de mañana ya publicado, Comparar no tiene rango', async () => {
+    at(AFTER_PUBLISHING)
+    const { user } = renderApp('/')
+
+    await user.click(await screen.findByRole('button', { name: 'Comparar' }))
+    expect(screen.getByRole('img', { name: 'Precio de hoy frente a mañana, en €/kWh' })).toBeInTheDocument()
+    expect(screen.queryByTestId('band')).not.toBeInTheDocument()
+    expect(screen.queryByText(/zona sombreada/)).not.toBeInTheDocument()
   })
 })
 

@@ -68,6 +68,15 @@ describe('LineChart', () => {
     const table = screen.getByRole('table', { name: 'Previsión frente a real' })
     expect(within(table).getByRole('row', { name: '2 — 25 €' })).toBeInTheDocument()
   })
+
+  it('la tabla incluye los límites de la banda si se piden', () => {
+    render(<LineChart {...props} band={{ label: 'Rango', color: 'grey', lower: [5, 15, null], upper: [30, 25, null], tableColumns: ['Mínimo', 'Máximo'] }} />)
+
+    const table = screen.getByRole('table', { name: 'Previsión frente a real' })
+    expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Hora', 'Precio real', 'Previsión', 'Mínimo', 'Máximo'])
+    expect(within(table).getByRole('row', { name: '1 20 € 18 € 15 € 25 €' })).toBeInTheDocument()
+    expect(within(table).getByRole('row', { name: '2 — 25 € — —' })).toBeInTheDocument()
+  })
 })
 
 describe('Heatmap', () => {
