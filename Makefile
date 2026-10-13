@@ -2,19 +2,23 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format test migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev clean
+.PHONY: help install lint lint-py lint-web format test test-py test-web migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev clean
 
 help: ## Muestra esta ayuda
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
 install: ## Instala las dependencias (Python y web) y los hooks de pre-commit
 	$(PYTHON) -m pip install -r requirements-dev.txt
 	npm --prefix frontend ci
 	$(PYTHON) -m pre_commit install
 
-lint: ## Revisa el código: ruff en Python, oxlint y tipos en la web (sin modificarlo)
+lint: lint-py lint-web ## Revisa todo el código sin modificarlo (Python y web)
+
+lint-py: ## Revisa el código Python con ruff
 	$(PYTHON) -m ruff check .
 	$(PYTHON) -m ruff format --check .
+
+lint-web: ## Revisa la web: oxlint y tipos de TypeScript
 	npm --prefix frontend run lint
 	npm --prefix frontend run typecheck
 
@@ -22,8 +26,12 @@ format: ## Corrige y formatea el código con ruff
 	$(PYTHON) -m ruff check --fix .
 	$(PYTHON) -m ruff format .
 
-test: ## Ejecuta los tests de Python (pytest) y de la web (Vitest)
+test: test-py test-web ## Ejecuta todos los tests (Python y web)
+
+test-py: ## Tests de Python (pytest)
 	$(PYTHON) -m pytest
+
+test-web: ## Tests de la web (Vitest)
 	npm --prefix frontend test
 
 migrate: ## Aplica las migraciones pendientes a la base de datos de DATABASE_URL
