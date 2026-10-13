@@ -93,7 +93,7 @@ describe('Simulador', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('La franja es más corta que el programa (6 h)')
     expect(result()).toHaveTextContent('Mejor hora · sin hueco en tu franja')
     expect(within(table()).getByRole('row', { name: /^Coche eléctrico.*No cabe en tu franja/ })).toBeInTheDocument()
-  })
+  }, 15_000) // 20 pulsaciones: con cobertura y la máquina cargada puede pasar de los 5 s por defecto
 
   it('simula un aparato propio con su potencia y duración', async () => {
     at(BEFORE_PUBLISHING)
