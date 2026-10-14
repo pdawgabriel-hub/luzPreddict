@@ -1,0 +1,82 @@
+name: Migraciones
+
+# Aplica en Neon las migraciones de Alembic en cuanto llegan a main. Vercel despliega
+# cada push a la vez, pero la migración tarda segundos y el build casi un minuto.
+# Para que no importe el orden, las migraciones son solo aditivas (columnas o tablas
+# nuevas que admiten nulos; nunca borrar ni renombrar en el mismo paso): la versión
+# anterior de la API sigue funcionando con la base ya migrada.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "alembic/**"
+      - "alembic.ini"
+      - "src/db/models.py"
+  workflow_dispatch:
+
+# Los workflows que escriben en la base de datos esperan su turno en lugar de solaparse
+concurrency:
+  group: neon-database
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Migraciones en Neon
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-pipeline.txt
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-pipeline.txt
+
+      - name: Migraciones (Alembic)
+        run: python -m alembic upgrade head
+
+      - name: Resumen
+        run: |
+          {
+            echo "### Migraciones en Neon"
+            echo
+            echo "Revisión actual de la base de datos:"
+            echo
+            echo '```'
+            python -m alembic current 2>/dev/null
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Aviso al tema privado de ntfy. Con curl y jq (no Python): funciona aunque lo roto sea Python
+      - name: Aviso privado si falla
+        if: failure()
+        env:
+          NTFY_ADMIN_TOPIC: ${{ secrets.NTFY_ADMIN_TOPIC }}
+          WORKFLOW: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$NTFY_ADMIN_TOPIC" ]; then
+            echo "::warning::Sin el secreto NTFY_ADMIN_TOPIC no se puede avisar del fallo"
+            exit 0
+          fi
+          jq -n --arg topic "$NTFY_ADMIN_TOPIC" --arg workflow "$WORKFLOW" --arg url "$RUN_URL" '{
+            topic: $topic,
+            title: "luzPreddict: ha fallado \($workflow)",
+            message: "Revisa el log de la ejecución para ver qué paso ha fallado.",
+            priority: 4,
+            click: $url
+          }' | curl -fsS --max-time 15 -H "Content-Type: application/json" --data-binary @- https://ntfy.sh > /dev/null
