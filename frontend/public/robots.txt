@@ -1,0 +1,4 @@
+# La web y la API pública se pueden indexar; las rutas internas de la web, no
+User-agent: *
+Allow: /
+Disallow: /api/
