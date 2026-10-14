@@ -1,0 +1,109 @@
+# Dependabot: cada lunes abre pull requests con las dependencias que tienen versión nueva.
+# No cambia nada por su cuenta: cada PR pasa el CI y tiene su despliegue de prueba en
+# Vercel, y producción solo cambia al fusionarla en main.
+#
+# Las actualizaciones menores y parches de cada ecosistema llegan juntas en una sola PR;
+# las versiones mayores, que pueden romper algo, en PRs aparte (salvo en Docker, ver abajo).
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types:
+        - minor
+        - patch
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types:
+        - minor
+        - patch
+
+  # Los requirements usan rangos (>=): CI y Vercel ya instalan lo último. Aquí llegan
+  # sobre todo subidas de mínimos y avisos de seguridad.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types:
+        - minor
+        - patch
+
+  # Docker (Dockerfile, frontend/Dockerfile y docker-compose.yml): solo parches de las
+  # versiones actuales. Ni versiones mayores (postgres 16, node 22, nginx 1) ni otro
+  # Python: la imagen de la API sigue en el 3.12 del CI y de Vercel.
+  - package-ecosystem: docker
+    directories:
+    - /
+    - /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 5
+    ignore:
+    - dependency-name: '*'
+      update-types:
+      - version-update:semver-major
+    - dependency-name: python
+      versions:
+      - '>=3.13'
+    groups:
+      menores:
+        update-types:
+        - minor
+        - patch
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore
+      include: scope
+    open-pull-requests-limit: 5
+    ignore:
+    - dependency-name: '*'
+      update-types:
+      - version-update:semver-major
+    - dependency-name: python
+      versions:
+      - '>=3.13'
