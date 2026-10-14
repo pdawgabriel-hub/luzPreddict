@@ -3,7 +3,7 @@
 -r requirements.txt
 
 # Datos
-pandas>=2.2
+pandas>=3.0.6
 numpy>=1.26
 pyarrow>=14.0
 requests>=2.34.2
