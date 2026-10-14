@@ -8,7 +8,7 @@ import { PageHeader } from '../components/PageHeader'
 import { ErrorState, LoadingState } from '../components/States'
 import { Stepper } from '../components/Stepper'
 import { useApi } from '../hooks/useApi'
-import { formatDay, formatNumber, formatPercent, formatPeriod, formatShortDay } from '../lib/format'
+import { formatDay, formatNumber, formatPercent, formatPeriod, formatShortDay, plural } from '../lib/format'
 import styles from './Factura.module.css'
 
 type Settings = { kwh: number; profile: string; fixed: number; shift: number }
@@ -240,7 +240,8 @@ function Outcome({ bill, settings, busy }: { bill: Bill; settings: Settings; bus
 
       <p className={styles.hint}>
         Perfiles de consumo aproximados. Precios PVPC reales {formatPeriod(bill.start, bill.end)}
-        {bill.missing_days.length > 0 && ` (faltan ${bill.missing_days.length} días, el consumo se reparte entre el resto)`}. {bill.note}
+        {bill.missing_days.length > 0 &&
+          ` (${bill.missing_days.length === 1 ? 'falta' : 'faltan'} ${plural(bill.missing_days.length, 'día')}, el consumo se reparte entre el resto)`}. {bill.note}
       </p>
     </div>
   )

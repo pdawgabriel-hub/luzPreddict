@@ -6,6 +6,7 @@ import {
   formatKwh,
   formatMwh,
   formatNumber,
+  plural,
   formatPercent,
   formatPeriod,
   formatShortDay,
@@ -67,5 +68,14 @@ describe('fechas', () => {
 
   it('un día de la API es un día de Madrid, sin desplazarse por la zona horaria', () => {
     expect(formatDay('2026-01-01')).toBe('jueves 1 de enero')
+  })
+})
+
+describe('plural', () => {
+  it('usa el singular solo con 1', () => {
+    expect(plural(1, 'día')).toBe('1 día')
+    expect(plural(0, 'día')).toBe('0 días')
+    expect(plural(14, 'día evaluado', 'días evaluados')).toBe('14 días evaluados')
+    expect(plural(17520, 'hora')).toBe('17.520 horas')
   })
 })

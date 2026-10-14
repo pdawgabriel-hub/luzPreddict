@@ -10,7 +10,7 @@ import { ErrorState, LoadingState } from '../components/States'
 import { useApi } from '../hooks/useApi'
 import { useNow } from '../hooks/useNow'
 import { addDays, daysBetween, madridDate } from '../lib/dates'
-import { formatDay, formatMwh, formatNumber, formatPercent, formatPeriod, formatShortDay, madridHour } from '../lib/format'
+import { formatDay, formatMwh, formatNumber, formatPercent, formatPeriod, formatShortDay, madridHour, plural } from '../lib/format'
 import { groupByDay } from '../lib/history'
 import { BASELINES, MODEL_LABELS, evaluateBaseline, intervalCoverage, mae, maeByDay, maeByDayType, maeByHour, type EvaluatedDay } from '../lib/model'
 import styles from './Modelo.module.css'
@@ -125,13 +125,13 @@ function Metrics({ data, model }: { data: ModelData; model: ModelName }) {
         label={`Error medio por hora · ${MODEL_LABELS[model]}`}
         value={error === null ? '—' : formatMwh(error)}
         unit={error === null ? undefined : '€/MWh'}
-        detail={evaluated.length ? `${evaluated.length} días evaluados (${formatPeriod(evaluated[0].day, evaluated[evaluated.length - 1].day)})` : 'Sin días evaluados todavía'}
+        detail={evaluated.length ? `${plural(evaluated.length, 'día evaluado', 'días evaluados')} (${formatPeriod(evaluated[0].day, evaluated[evaluated.length - 1].day)})` : 'Sin días evaluados todavía'}
       />
       <KpiCard
         label="Error en producción, últimos 30 días"
         value={live.mae === null ? '—' : formatMwh(live.mae)}
         unit={live.mae === null ? undefined : '€/MWh'}
-        detail={live.days.length ? `${live.days.length} días con previsión publicada${live.fallback_days ? `, ${live.fallback_days} con respaldo` : ''}` : 'El pipeline aún no ha evaluado ningún día'}
+        detail={live.days.length ? `${plural(live.days.length, 'día con previsión publicada', 'días con previsión publicada')}${live.fallback_days ? `, ${live.fallback_days} con respaldo` : ''}` : 'El pipeline aún no ha evaluado ningún día'}
       />
       <KpiCard
         label="Mejora frente a la mejor referencia"
@@ -182,7 +182,7 @@ function ModelCharts({ data, model }: { data: ModelData; model: ModelName }) {
           <div>
             <h2 id="frente">Previsión frente a precio real</h2>
             <p className="muted">
-              {MODEL_LABELS[model]} · {day === 'all' ? `últimos ${evaluated.length} días` : formatDay(day)} · error medio{' '}
+              {MODEL_LABELS[model]} · {day === 'all' ? (evaluated.length === 1 ? 'último día' : `últimos ${evaluated.length} días`) : formatDay(day)} · error medio{' '}
               {shownMae === null ? '—' : mwh(shownMae)}
             </p>
           </div>

@@ -31,6 +31,11 @@ export function formatEuros(value: number, decimals = 2): string {
   return `${formatNumber(value, decimals)} €`
 }
 
+/** Una cantidad con su palabra en singular o plural: (1, 'día') → "1 día"; (3, 'día') → "3 días". */
+export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${formatNumber(count)} ${count === 1 ? singular : pluralForm}`
+}
+
 /** Porcentaje con espacio, como manda la RAE: 12 → "12 %". */
 export function formatPercent(value: number, decimals = 0): string {
   return `${formatNumber(value, decimals)} %`
