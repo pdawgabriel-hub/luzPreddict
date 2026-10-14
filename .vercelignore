@@ -15,3 +15,8 @@ requirements-dev.txt
 requirements-pipeline.txt
 Dockerfile
 docker-compose.yml
+
+# Guía técnica (se publica en GitHub Pages)
+docs/
+mkdocs.yml
+requirements-docs.txt

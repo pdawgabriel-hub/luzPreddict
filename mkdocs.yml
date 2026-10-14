@@ -1,0 +1,68 @@
+# Guía técnica de luzPreddict: make docs (en local) · se publica en GitHub Pages con
+# .github/workflows/docs.yml. Las páginas están en docs/; las imágenes, en docs/img/
+# (las mismas que usa el README).
+site_name: luzPreddict · Guía técnica
+site_description: Cómo está construido luzPreddict, la previsión del precio de la luz (PVPC) del día siguiente
+site_author: Gabriel Iborra Vicente
+site_url: https://pdawgabriel-hub.github.io/luzPreddict/
+repo_url: https://github.com/pdawgabriel-hub/luzPreddict
+repo_name: pdawgabriel-hub/luzPreddict
+edit_uri: edit/main/docs/
+copyright: Gabriel Iborra Vicente · licencia de portfolio con uso comercial restringido
+
+theme:
+  name: material
+  language: es
+  icon:
+    logo: material/lightning-bolt
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo claro
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+nav:
+  - Inicio: index.md
+  - Arquitectura: arquitectura.md
+  - Datos: datos.md
+  - Modelo: modelo.md
+  - Automatización: automatizacion.md
+  - API: api.md
+  - Web: web.md
+  - Calidad: calidad.md
+  - Despliegue y operación: despliegue.md
+  - Desarrollo local: desarrollo-local.md
+  - Decisiones y mejoras: decisiones.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences

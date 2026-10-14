@@ -2,7 +2,7 @@
 PYTHON ?= $(if $(wildcard venv/bin/python),venv/bin/python,python3)
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint lint-py lint-web format test test-py test-web migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev docker-up docker-seed docker-down clean
+.PHONY: help install lint lint-py lint-web format test test-py test-web migrate backfill pipeline backtest train predict api api-types web web-mocks web-build web-coverage dev docker-up docker-seed docker-down docs docs-build clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
@@ -85,6 +85,14 @@ docker-seed: ## Carga en Docker el histórico de REE, entrena el modelo y hace l
 docker-down: ## Para los contenedores de Docker (los datos se conservan; -v en docker compose down los borra)
 	docker compose down
 
+docs: ## Guía técnica en http://localhost:8001, recargando al guardar (instala MkDocs la primera vez)
+	$(PYTHON) -m pip install -q -r requirements-docs.txt
+	$(PYTHON) -m mkdocs serve --dev-addr 127.0.0.1:8001
+
+docs-build: ## Construye la guía técnica en site/ y falla si hay enlaces rotos
+	$(PYTHON) -m pip install -q -r requirements-docs.txt
+	$(PYTHON) -m mkdocs build --strict
+
 clean: ## Borra cachés de Python, pytest y ruff y la web compilada
 	find . -path ./venv -prune -o -path ./frontend/node_modules -prune -o -type d -name __pycache__ -exec rm -rf {} +
-	rm -rf .pytest_cache .ruff_cache frontend/dist
+	rm -rf .pytest_cache .ruff_cache frontend/dist site
