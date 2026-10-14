@@ -15,7 +15,7 @@
 ![License](https://img.shields.io/badge/License-Portfolio%20%2F%20Restricted%20use-red)
 ![Status](https://img.shields.io/badge/Status-In%20production-brightgreen)
 
-**[Open the website](https://luzpreddict.vercel.app)** · **[API documentation](https://luzpreddict.vercel.app/docs)** · **[Technical guide (Spanish)](https://pdawgabriel-hub.github.io/luzPreddict/)** · **[Daily summary on ntfy](https://ntfy.sh/luzpreddict)**
+**[Open the website](https://luzpreddict.vercel.app)** · **[API documentation](https://luzpreddict.vercel.app/docs)** · **[Technical guide (Spanish)](https://pdawgabriel-hub.github.io/luzPreddict/)**
 
 ![luzPreddict dashboard](docs/img/capturas/panel.png)
 
@@ -48,8 +48,8 @@ hour by hour, with a machine learning model, and publishes it on a **website** a
 API**, along with tools to decide when to use electricity.
 
 Every evening, when Red Eléctrica (REE, the Spanish grid operator) publishes the prices, an
-automated job downloads the data, updates the forecast, measures how accurate the previous one
-was and sends a summary to your phone. The website and the API only read those results, so they
+automated job downloads the data, updates the forecast and measures how accurate the previous
+one was. The website and the API only read those results, so they
 respond instantly and the whole system **costs €0 per month**.
 
 In short:
@@ -100,8 +100,9 @@ The project runs as a free service, but the same foundation supports several mod
   The free tier keeps its limit of 60 requests per minute.
 - **White label or widget** for electricity retailers and tariff comparison sites, which can offer
   the forecast and the simulator to their customers.
-- **Advanced alerts**, such as personal thresholds or a "charge your car now" alert, for users who
-  want more than the daily summary.
+- **Phone alerts**, such as a daily summary of tomorrow's prices, personal thresholds or a
+  "charge your car now" alert. The daily job already produces that summary and sends it through
+  ntfy, for now only to the developer.
 - **A service for small businesses** with shiftable consumption (laundries, bakeries, cold rooms,
   electric fleets) that plan their production around the forecast price.
 
@@ -128,8 +129,9 @@ The system separates **the heavy part** (computing) from **what is served** (web
 4. **Vercel**, the service. It serves the **website** (React) and the **API** (FastAPI) from the
    same domain and from its CDN, which caches every response until the next update: most visits
    reach neither the API nor the database.
-5. **ntfy**, the notifications. When tomorrow's prices arrive, it sends the summary to a public
-   topic, and if a workflow fails, it alerts through a private topic.
+5. **ntfy**, internal notifications. Through a private topic, they send the developer's phone a
+   summary of tomorrow's prices (a sign that the job worked) and an alert if any workflow fails.
+   It is not a service for users: nobody else can subscribe.
 
 **Why this design:** the API does not load pandas or the model (it only reads rows), which makes it
 fast and free on Vercel; the computing takes a few minutes a day, which GitHub Actions provides at
@@ -152,7 +154,7 @@ decisions are in the [technical guide](https://pdawgabriel-hub.github.io/luzPred
 | **Simulador** (simulator) | What it costs to run an appliance at a given hour and how much you save by moving it |
 | **Planificador** (planner) | Spreads several appliances over the cheap hours without exceeding the contracted power |
 | **Factura** (bill) | Whether the PVPC or a fixed price suits you, with your consumption and 30 days of real prices |
-| **Alertas** (alerts) | Personal threshold stored in the browser and subscription to the daily summary |
+| **Alertas** (alerts) | Personal threshold stored in the browser: which of tomorrow's hours meet it and how often it would have triggered |
 | **Modelo** (model) | How accurate the forecast is: error by hour and by day, and against the baselines |
 | **API** | Public API documentation with live requests and `curl` commands |
 
@@ -205,7 +207,7 @@ accessible (charts with data tables for screen readers, keyboard navigation) and
 | [/simulador](https://luzpreddict.vercel.app/simulador) | Cost and savings simulator per appliance |
 | [/planificador](https://luzpreddict.vercel.app/planificador) | Day planner |
 | [/factura](https://luzpreddict.vercel.app/factura) | PVPC versus a fixed price |
-| [/alertas](https://luzpreddict.vercel.app/alertas) | Alerts and subscription to the daily summary |
+| [/alertas](https://luzpreddict.vercel.app/alertas) | Threshold alerts, stored in the browser |
 | [/modelo](https://luzpreddict.vercel.app/modelo) | Model evaluation |
 | [/desarrolladores](https://luzpreddict.vercel.app/desarrolladores) | API documentation inside the website |
 
@@ -227,7 +229,6 @@ accessible (charts with data tables for screen readers, keyboard navigation) and
 | Link | What it is for |
 |---|---|
 | [Technical guide](https://pdawgabriel-hub.github.io/luzPreddict/) | How everything is built, chapter by chapter (in Spanish) |
-| [Daily summary on ntfy](https://ntfy.sh/luzpreddict) | Tomorrow's prices on your phone, no account needed (ntfy app, topic `luzpreddict`) |
 | [GitHub Actions](https://github.com/pdawgabriel-hub/luzPreddict/actions) | Runs of the daily job, retraining, CI and Lighthouse |
 
 [Back to top](#top)
@@ -266,7 +267,7 @@ in the [technical guide](https://pdawgabriel-hub.github.io/luzPreddict/modelo/) 
 - **608 Python tests** (pytest) against a real PostgreSQL test database: ingestion with real REE
   responses, 23- and 25-hour days, future leakage in the model, idempotent writes, migrations,
   several consecutive days of the daily job and every API endpoint.
-- **218 web tests** (Vitest and Testing Library) with mandatory minimum coverage: 98% of statements
+- **214 web tests** (Vitest and Testing Library) with mandatory minimum coverage: 98% of statements
   and 87% of branches.
 - **CI on every push:** ruff, oxlint, TypeScript, tests, build and up-to-date API types.
 - **Lighthouse after every deployment:** accessibility **100** on the audited pages and performance
@@ -341,8 +342,6 @@ Its source lives in [`docs/`](docs/) and is published automatically on every cha
   token.
 - **No demand, wind or solar forecasts as features**, for the same reason: the public API does not
   provide them for the next day. This is the improvement with the most potential for the model.
-- **The public ntfy topic** can be used by anyone who knows its name: reserving a topic is a paid
-  feature.
 - **The forecast is indicative** and does not guarantee the final price. In very volatile periods,
   the likely range is right less than 8 times out of 10; the Model page shows the actual figure.
 

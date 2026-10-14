@@ -392,7 +392,7 @@ const STEPS = [
   { title: 'Limpieza', text: 'Serie horaria continua en UTC: cambios de hora, duplicados y huecos cortos.' },
   { title: 'Variables', text: 'Calendario, festivos, tramo 2.0TD y precios de días anteriores (nunca del día que se predice).' },
   { title: 'Modelo', text: 'LightGBM entrenado con dos años de datos y validado día a día, siempre frente a las referencias simples.' },
-  { title: 'Previsión', text: 'Las horas del día siguiente, publicadas en el panel, en la API y en el resumen diario de ntfy.' },
+  { title: 'Previsión', text: 'Las horas del día siguiente, publicadas en el panel y en la API.' },
 ]
 
 function HowItWorks() {

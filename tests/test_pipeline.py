@@ -232,12 +232,14 @@ def test_without_ree_prices_the_forecast_is_sent_only_on_the_last_attempt(seeded
 
 @pytest.fixture
 def ntfy_settings(monkeypatch):
-    settings = Settings(_env_file=None, ntfy_topic="luzpreddict", site_url="https://luzpreddict.vercel.app")
+    settings = Settings(
+        _env_file=None, ntfy_topic="luzpreddict-avisos-prueba", site_url="https://luzpreddict.vercel.app"
+    )
     monkeypatch.setattr(pipeline, "get_settings", lambda: settings)
     return settings
 
 
-def test_notify_publishes_to_the_public_topic(seeded, sessions, ntfy_settings, monkeypatch):
+def test_notify_publishes_to_the_private_topic(seeded, sessions, ntfy_settings, monkeypatch):
     published = []
     monkeypatch.setattr(pipeline.ntfy, "publish", lambda *args, **kwargs: published.append((args, kwargs)) or "id1")
     result = pipeline.daily(
@@ -248,7 +250,7 @@ def test_notify_publishes_to_the_public_topic(seeded, sessions, ntfy_settings, m
 
     assert outcome == f"Resumen del {LAST_DAY + timedelta(days=1):%d/%m/%Y} enviado a ntfy (precios de REE)"
     (server, topic, title, body), kwargs = published[0]
-    assert (server, topic) == ("https://ntfy.sh", "luzpreddict")
+    assert (server, topic) == ("https://ntfy.sh", "luzpreddict-avisos-prueba")
     assert title.startswith("Luz el ")
     assert kwargs == {"click": "https://luzpreddict.vercel.app"}
 

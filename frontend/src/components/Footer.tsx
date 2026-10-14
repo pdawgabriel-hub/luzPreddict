@@ -17,7 +17,7 @@ export function Footer() {
           <span>luzPreddict · proyecto de portfolio</span>
           <Link to="/desarrolladores">API pública</Link>
           <a href={REPO_URL}>Código en GitHub</a>
-          <span>Licencia MIT</span>
+          <a href={`${REPO_URL}/blob/main/LICENSE.md`}>Licencia de portfolio</a>
         </p>
       </div>
     </footer>

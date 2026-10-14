@@ -15,7 +15,7 @@
 ![Licencia](https://img.shields.io/badge/Licencia-Portfolio%20%2F%20Uso%20restringido-red)
 ![Estado](https://img.shields.io/badge/Estado-En%20producci%C3%B3n-brightgreen)
 
-**[Abrir la web](https://luzpreddict.vercel.app)** · **[Documentación de la API](https://luzpreddict.vercel.app/docs)** · **[Guía técnica](https://pdawgabriel-hub.github.io/luzPreddict/)** · **[Resumen diario en ntfy](https://ntfy.sh/luzpreddict)**
+**[Abrir la web](https://luzpreddict.vercel.app)** · **[Documentación de la API](https://luzpreddict.vercel.app/docs)** · **[Guía técnica](https://pdawgabriel-hub.github.io/luzPreddict/)**
 
 ![Panel de luzPreddict](docs/img/capturas/panel.png)
 
@@ -48,8 +48,7 @@ hora a hora, con un modelo de machine learning, y lo publica en una **web** y en
 pública** junto con herramientas para decidir cuándo consumir.
 
 Cada tarde, cuando Red Eléctrica (REE) publica los precios, una tarea automática descarga los
-datos, actualiza la previsión, mide cuánto acertó la del día anterior y envía un resumen al
-móvil. La web y la API solo leen esos resultados, así que responden al instante y el sistema
+datos, actualiza la previsión y mide cuánto acertó la del día anterior. La web y la API solo leen esos resultados, así que responden al instante y el sistema
 completo **cuesta 0 € al mes**.
 
 En resumen:
@@ -99,8 +98,9 @@ El proyecto está desplegado como servicio gratuito, pero la misma base permite 
   aplicaciones de terceros. La gratuita conserva su límite de 60 peticiones por minuto.
 - **Marca blanca o widget** para comercializadoras y comparadores de tarifas, que pueden ofrecer
   la previsión y el simulador a sus clientes.
-- **Avisos avanzados**, como umbrales personales o el aviso "carga el coche ahora", para
-  usuarios que quieran algo más que el resumen diario.
+- **Avisos en el móvil**, como un resumen diario de los precios de mañana, umbrales personales
+  o el aviso "carga el coche ahora". La tarea diaria ya genera ese resumen y lo envía por ntfy,
+  de momento solo al desarrollador.
 - **Servicio para pymes** con consumo desplazable (lavanderías, obradores, cámaras frigoríficas,
   flotas eléctricas) que planifiquen su producción según el precio previsto.
 
@@ -127,8 +127,9 @@ El sistema separa **lo pesado** (calcular) de **lo que se sirve** (web y API):
 4. **Vercel**, el servicio. Sirve la **web** (React) y la **API** (FastAPI) desde el mismo dominio
    y desde su CDN, que guarda cada respuesta hasta la siguiente actualización: la mayoría de las
    visitas no llegan ni a la API ni a la base de datos.
-5. **ntfy**, los avisos. Al llegar los precios de mañana, envía el resumen a un tema público, y
-   si falla algún workflow, avisa por un tema privado.
+5. **ntfy**, los avisos internos. Envían al móvil del desarrollador, por un tema privado, el
+   resumen de los precios de mañana (señal de que la tarea ha funcionado) y un aviso si falla
+   algún workflow. No es un servicio para los usuarios: nadie más se puede suscribir.
 
 **Por qué así:** la API no carga pandas ni el modelo (solo lee filas), lo que la hace rápida y
 gratuita en Vercel; el cálculo dura minutos al día, que GitHub Actions da sin coste; y todo está
@@ -150,7 +151,7 @@ en **Frankfurt**, así que cada consulta se queda en Europa. Los detalles y las 
 | **Simulador** | Cuánto cuesta poner un aparato a una hora y cuánto se ahorra moviéndolo |
 | **Planificador** | Reparto de varios aparatos en las horas baratas sin superar la potencia contratada |
 | **Factura** | Si te compensa el PVPC o un precio fijo, con tu consumo y los precios reales de 30 días |
-| **Alertas** | Umbral personal guardado en el navegador y suscripción al resumen diario |
+| **Alertas** | Umbral personal guardado en el navegador: qué horas de mañana lo cumplen y cuántas veces habría saltado |
 | **Modelo** | Cuánto acierta la previsión: error por hora y por día, y frente a las referencias |
 | **API** | Documentación de la API pública con peticiones reales y comandos `curl` |
 
@@ -203,7 +204,7 @@ tablas de datos para lectores de pantalla y navegación con teclado) y funciona 
 | [/simulador](https://luzpreddict.vercel.app/simulador) | Simulador de coste y ahorro por aparato |
 | [/planificador](https://luzpreddict.vercel.app/planificador) | Planificador del día |
 | [/factura](https://luzpreddict.vercel.app/factura) | PVPC frente a precio fijo |
-| [/alertas](https://luzpreddict.vercel.app/alertas) | Alertas y suscripción al resumen diario |
+| [/alertas](https://luzpreddict.vercel.app/alertas) | Alertas por umbral, guardadas en el navegador |
 | [/modelo](https://luzpreddict.vercel.app/modelo) | Evaluación del modelo |
 | [/desarrolladores](https://luzpreddict.vercel.app/desarrolladores) | Documentación de la API dentro de la web |
 
@@ -225,7 +226,6 @@ tablas de datos para lectores de pantalla y navegación con teclado) y funciona 
 | Enlace | Para qué |
 |---|---|
 | [Guía técnica](https://pdawgabriel-hub.github.io/luzPreddict/) | Cómo está construido todo, por capítulos |
-| [Resumen diario en ntfy](https://ntfy.sh/luzpreddict) | Los precios de mañana en el móvil, sin cuentas (app ntfy, tema `luzpreddict`) |
 | [GitHub Actions](https://github.com/pdawgabriel-hub/luzPreddict/actions) | Ejecuciones de la tarea diaria, el reentrenamiento, el CI y Lighthouse |
 
 [Volver arriba](#top)
@@ -264,7 +264,7 @@ en la [guía técnica](https://pdawgabriel-hub.github.io/luzPreddict/modelo/).
 - **608 tests de Python** (pytest) contra una base PostgreSQL de pruebas real: ingesta con
   respuestas reales de REE, días de 23 y 25 horas, fugas del futuro en el modelo, escrituras
   idempotentes, migraciones, varios días seguidos de la tarea diaria y cada endpoint de la API.
-- **218 tests de la web** (Vitest y Testing Library) con cobertura mínima obligatoria: 98 % de
+- **214 tests de la web** (Vitest y Testing Library) con cobertura mínima obligatoria: 98 % de
   sentencias y 87 % de ramas.
 - **CI en cada push:** ruff, oxlint, TypeScript, tests, build y tipos de la API al día.
 - **Lighthouse tras cada despliegue:** accesibilidad **100** en las páginas auditadas y rendimiento
@@ -337,8 +337,6 @@ Su código fuente está en [`docs/`](docs/) y se publica sola con cada cambio.
   Baleares, Ceuta y Melilla necesitarían ESIOS, la otra API de REE, que pide token.
 - **Sin previsiones de demanda, eólica y solar como variables**, por el mismo motivo: la API
   pública no las tiene para el día siguiente. Es la mejora con más potencial para el modelo.
-- **El tema público de ntfy** lo puede usar cualquiera que conozca su nombre: reservar un tema es
-  de pago.
 - **La previsión es orientativa** y no garantiza el precio final. En épocas muy volátiles, el
   rango probable acierta menos de 8 de cada 10 horas; la página Modelo muestra la cifra real.
 

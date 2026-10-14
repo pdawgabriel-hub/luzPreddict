@@ -1,4 +1,4 @@
-"""Resumen diario de los precios de un día, para la notificación de ntfy y la web.
+"""Resumen diario de los precios de un día, para la notificación de ntfy.
 
 Python puro (sin pandas). Texto corto en español, con €/kWh y coma decimal, que
 se lea de un vistazo en una notificación del móvil.

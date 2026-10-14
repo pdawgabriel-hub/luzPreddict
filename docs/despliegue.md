@@ -78,8 +78,8 @@ ejecución en Actions.
 fallos de red con REE se suelen arreglar solos en el reintento de las 21:30 UTC o al día
 siguiente; la tarea es idempotente y recoge lo que falte.
 
-**…REE no publica.** La web muestra la previsión hasta que publique, el resumen de ntfy se envía
-con la previsión en el último intento del día y la tarea siguiente recoge los precios.
+**…REE no publica.** La web muestra la previsión hasta que publique, el resumen interno de ntfy
+llega con la previsión en el último intento del día y la tarea siguiente recoge los precios.
 
 **…el modelo se ha quedado anticuado.** `/health` avisa si tiene más de 14 días. Lanza a mano
 **Reentrenamiento semanal**; mientras tanto, la previsión sigue funcionando con el último modelo

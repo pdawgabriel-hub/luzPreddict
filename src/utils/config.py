@@ -51,9 +51,9 @@ class Settings(BaseSettings):
     upstash_redis_rest_token: str | None = None
     rate_limit_per_minute: int = Field(default=60, ge=1)
 
-    # Resumen diario por ntfy (solo con `python -m src.pipeline daily --notify`)
+    # Resumen diario por ntfy, solo para el desarrollador (con `python -m src.pipeline daily --notify`)
     ntfy_server: str = "https://ntfy.sh"
-    ntfy_topic: str | None = None  # tema público; el mismo que VITE_NTFY_TOPIC en la web
+    ntfy_topic: str | None = None  # tema privado, de nombre aleatorio: el mismo de los avisos de fallo
     site_url: str | None = None  # web que se abre al tocar la notificación
 
     @field_validator("timezone")

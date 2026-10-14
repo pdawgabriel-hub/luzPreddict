@@ -24,7 +24,7 @@ filas y las devuelve. Esta separación es la que permite desplegarlo todo gratis
 | **PostgreSQL (Neon)** | Guarda precios, generación, modelos entrenados, previsiones y errores diarios. | `src/db/`, `alembic/` |
 | **Redis (Upstash)** | Cuenta las peticiones por IP para el límite de la API. | `src/api/rate_limit.py` |
 | **Vercel** | Sirve la web estática y la API (función de Python) desde su CDN, en Frankfurt. | `vercel.json`, `src/api/`, `frontend/` |
-| **ntfy.sh** | Envía el resumen diario (tema público) y los avisos de fallo (tema privado). | `src/notifications/`, workflows |
+| **ntfy.sh** | Avisos internos al móvil del desarrollador, por un tema privado: el resumen diario y los fallos. | `src/notifications/`, workflows |
 
 ## El ciclo de un día
 
@@ -35,7 +35,7 @@ filas y las devuelve. Esta separación es la que permite desplegarlo todo gratis
     - prevé el primer día sin precio publicado con el modelo guardado y guarda la previsión
       con su intervalo;
     - calcula el error de las previsiones de los últimos días frente al precio real;
-    - si los precios de mañana acaban de llegar, envía el resumen a ntfy.
+    - si los precios de mañana acaban de llegar, envía el resumen al desarrollador por ntfy.
 3. **A las 21:30 UTC** se repite como reintento. La tarea es idempotente: si la primera
    salió bien, no cambia nada; si REE aún no había publicado, la completa.
 4. La API marca sus respuestas para que la **CDN de Vercel** las guarde hasta la siguiente
@@ -70,8 +70,7 @@ región: cada consulta de la API a la base de datos se queda dentro de Europa y 
 milisegundos.
 
 **¿Por qué sin cuentas de usuario?** No hace falta: las alertas personales se guardan en el
-navegador y el resumen diario va por ntfy, que no pide registro. Así no hay datos personales
-que proteger.
+navegador, y la web no envía notificaciones a nadie. Así no hay datos personales que proteger.
 
 ## Estructura del repositorio
 

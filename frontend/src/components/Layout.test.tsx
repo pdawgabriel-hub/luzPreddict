@@ -118,5 +118,9 @@ describe('estructura y pie', () => {
       'href',
       'https://github.com/pdawgabriel-hub/luzPreddict',
     )
+    expect(within(footer).getByRole('link', { name: 'Licencia de portfolio' })).toHaveAttribute(
+      'href',
+      'https://github.com/pdawgabriel-hub/luzPreddict/blob/main/LICENSE.md',
+    )
   })
 })

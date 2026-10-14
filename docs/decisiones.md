@@ -18,8 +18,14 @@ cada sistema está en ESIOS. Además, los periodos de la tarifa de Ceuta y Melil
 horarios. Las páginas de precios de la web indican que son los del sistema peninsular
 ("PVPC · Península").
 
-**Cuentas de usuario y correos.** Las alertas personales se guardan en el navegador y el resumen
-va por ntfy. Sin cuentas no hay datos personales que proteger ni contraseñas que gestionar.
+**Cuentas de usuario y correos.** Las alertas personales se guardan en el navegador. Sin cuentas no
+hay datos personales que proteger ni contraseñas que gestionar.
+
+**Un resumen diario público por ntfy.** Se llegó a ofrecer en la página Alertas, con un tema
+público al que cualquiera podía suscribirse. Se retiró: en ntfy.sh gratuito, quien conoce el
+nombre de un tema también puede publicar en él, y reservarlo es de pago. El resumen sigue
+generándose, pero solo llega al desarrollador, por un tema privado, como señal de que la tarea
+diaria ha funcionado.
 
 **Un servidor propio.** El cálculo dura minutos al día, así que GitHub Actions es suficiente y
 gratuito. La API, como función serverless con caché en la CDN, no necesita estar encendida.
@@ -30,8 +36,6 @@ recomienda ahora para juntar una web y un backend de Python en el mismo proyecto
 
 ## Limitaciones conocidas
 
-- **El tema público de ntfy** lo puede usar cualquiera que conozca su nombre, también para
-  publicar: reservar un tema es de pago. Es el precio de no tener cuentas.
 - **La cobertura del intervalo** baja en épocas de precios muy volátiles: los cuantiles aprenden
   del pasado reciente. Se mide y se publica en la página Modelo.
 - **La página Modelo necesita días con previsión guardada** para comparar con el precio real. Se
@@ -47,4 +51,4 @@ recomienda ahora para juntar una web y un backend de Python en el mismo proyecto
 | PVPC de Canarias, Baleares, Ceuta y Melilla | Token de ESIOS, región en las tablas y la API, y selector en la web |
 | Intervalos que se adapten a la volatilidad reciente | Calibración conformal sobre las últimas semanas |
 | Menos desplazamiento al cargar el Simulador | Reservar el espacio de los resultados mientras llegan |
-| Avisos por umbral sin abrir la web | Un tema de ntfy por umbral, generado en el navegador |
+| Avisos al móvil para los usuarios (resumen diario, umbrales) | Notificaciones push de la web o un servicio de avisos con temas protegidos |

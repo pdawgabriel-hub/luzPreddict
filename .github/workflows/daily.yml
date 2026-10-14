@@ -26,8 +26,8 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      # Tema público del resumen diario: el mismo que enlaza la web (VITE_NTFY_TOPIC)
-      NTFY_TOPIC: luzpreddict
+      # El resumen diario va al tema privado del desarrollador, el mismo de los avisos de fallo
+      NTFY_TOPIC: ${{ secrets.NTFY_ADMIN_TOPIC }}
       # Al tocar la notificación se abre la web
       SITE_URL: https://luzpreddict.vercel.app
       PYTHONUNBUFFERED: "1"

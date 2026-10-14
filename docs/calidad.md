@@ -20,7 +20,7 @@ a arrancar.
 
 ## Tests de la web
 
-**218 tests** con Vitest y Testing Library, en jsdom. Prueban las páginas como las usaría una
+**214 tests** con Vitest y Testing Library, en jsdom. Prueban las páginas como las usaría una
 persona (por rol y nombre accesible, con clics y teclado) sobre los datos de ejemplo, y las
 funciones de `lib/` con valores calculados a mano.
 

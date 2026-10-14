@@ -24,7 +24,7 @@ cómo se automatiza todo cada día y cómo se despliega sin coste.
 | Error | Un 30 % menos que la mejor referencia simple ("precio de ayer" o "media de 7 días") |
 | Rango probable | Intervalo en el que cae el precio real 8 de cada 10 horas en el periodo de prueba |
 | Automatización | Seis workflows de GitHub Actions: tarea diaria, reentrenamiento, carga, migraciones, CI y Lighthouse |
-| Calidad | 608 tests de Python y 218 de la web, con cobertura mínima obligatoria en el CI |
+| Calidad | 608 tests de Python y 214 de la web, con cobertura mínima obligatoria en el CI |
 | Coste | 0 € al mes: GitHub Actions, Neon, Vercel, Upstash y ntfy en sus planes gratuitos |
 
 ## Cómo leer esta guía
@@ -34,7 +34,7 @@ Los capítulos siguen el recorrido de los datos, de la fuente al usuario:
 1. **[Arquitectura](arquitectura.md):** las piezas, cómo se comunican y por qué se eligieron.
 2. **[Datos](datos.md):** la API de REE, la ingesta, la limpieza y la base de datos.
 3. **[Modelo](modelo.md):** variables, referencias, LightGBM, backtest e intervalos de predicción.
-4. **[Automatización](automatizacion.md):** los workflows de GitHub Actions y los avisos por ntfy.
+4. **[Automatización](automatizacion.md):** los workflows de GitHub Actions y los avisos internos por ntfy.
 5. **[API](api.md):** endpoints, errores, caché y límite de peticiones.
 6. **[Web](web.md):** las páginas, el cliente de la API, los datos de ejemplo y las gráficas.
 7. **[Calidad](calidad.md):** tests, cobertura, pre-commit y Lighthouse.

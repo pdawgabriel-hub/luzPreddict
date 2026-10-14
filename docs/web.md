@@ -14,7 +14,7 @@ necesita CORS.
 | **Simulador** | `/simulador` | Cuánto cuesta poner un aparato a una hora y cuánto se ahorra moviéndolo a la mejor. |
 | **Planificador** | `/planificador` | Reparte varios aparatos en las horas baratas sin superar la potencia contratada. |
 | **Factura** | `/factura` | Si con tu consumo te compensa el PVPC o un precio fijo, con los precios reales de los últimos 30 días. |
-| **Alertas** | `/alertas` | Umbral personal guardado en el navegador y suscripción al resumen diario por ntfy. |
+| **Alertas** | `/alertas` | Umbral personal guardado en el navegador: qué horas de mañana lo cumplen y cuántas veces habría saltado en los últimos 30 días. No envía nada a ningún servidor. |
 | **Modelo** | `/modelo` | Cuánto acierta la previsión frente al precio real y frente a las referencias, por hora y por día. |
 | **API** | `/desarrolladores` | Documentación de la API pública con peticiones reales y comandos `curl` para copiar. |
 

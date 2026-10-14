@@ -71,20 +71,12 @@ describe('Alertas', () => {
     expect(within(myAlerts()).getAllByRole('listitem')).toHaveLength(1) // sigue en la página
   })
 
-  it('explica cómo suscribirse a ntfy y cómo llegaría el resumen', async () => {
-    const { user } = renderApp('/alertas') // userEvent trae su propio portapapeles de pruebas
+  it('las alertas solo viven en el navegador: no se ofrece ninguna suscripción', async () => {
+    renderApp('/alertas')
+    await screen.findByRole('region', { name: 'Nueva alerta' })
 
-    const ntfy = await screen.findByRole('region', { name: 'Resumen diario en el móvil' })
-    expect(ntfy).toHaveTextContent('Suscríbete al tema luzpreddict')
-    expect(within(ntfy).getByRole('link', { name: 'ntfy.sh/luzpreddict' })).toHaveAttribute('href', 'https://ntfy.sh/luzpreddict')
-
-    const notification = within(ntfy).getByRole('article', { name: 'Ejemplo de notificación' })
-    expect(notification).toHaveTextContent(/Luz el miércoles 7 de octubre: media 0,\d{3} €\/kWh/)
-    expect(notification).toHaveTextContent('Previsión de luzPreddict (LightGBM).')
-    expect(notification).toHaveTextContent(/Un \d+ % más (cara|barata) que el día anterior\.|Similar al día anterior\./)
-
-    await user.click(within(ntfy).getByRole('button', { name: 'Copiar' }))
-    expect(await navigator.clipboard.readText()).toBe('luzpreddict')
-    expect(within(ntfy).getByRole('button', { name: 'Copiado' })).toBeInTheDocument()
+    expect(screen.getByText(/Se guarda solo en tu navegador: sin cuentas, sin correo/)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Resumen diario en el móvil' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /ntfy/ })).not.toBeInTheDocument()
   })
 })

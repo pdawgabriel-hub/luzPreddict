@@ -8,7 +8,7 @@ es público, así que las máquinas son gratuitas.
 | Workflow | Cuándo | Qué hace |
 |---|---|---|
 | **CI** (`ci.yml`) | Cada push y PR a `main` | Python: ruff y pytest contra un PostgreSQL de servicio. Web: oxlint, tipos, tipos de la API al día, tests con cobertura, build y que el build no lleve los datos de ejemplo. |
-| **Tarea diaria** (`daily.yml`) | 19:30 y 21:30 UTC, y a mano | Migraciones pendientes, ingesta, previsión, error diario y resumen en ntfy |
+| **Tarea diaria** (`daily.yml`) | 19:30 y 21:30 UTC, y a mano | Migraciones pendientes, ingesta, previsión, error diario y resumen interno por ntfy |
 | **Reentrenamiento semanal** (`weekly-train.yml`) | Domingos a las 3:00 UTC, y a mano | Entrena LightGBM, lo guarda con sus métricas y poda los modelos antiguos |
 | **Carga del histórico** (`backfill.yml`) | A mano | Migraciones, descarga desde 2021 (o lo que falte) y, si se marca, entrenamiento |
 | **Migraciones** (`migrate.yml`) | Push a `main` que toque `alembic/` o los modelos, y a mano | `alembic upgrade head` en Neon |
@@ -46,12 +46,25 @@ como salida del paso.
 ## Notificaciones por ntfy
 
 [ntfy.sh](https://ntfy.sh) envía notificaciones al móvil sin cuentas: un **tema** es solo un
-nombre, y quien lo conoce puede suscribirse.
+nombre, y quien lo conoce puede suscribirse y también publicar en él. Por eso las
+notificaciones son **solo para el desarrollador**: van a un único tema privado, de nombre
+aleatorio, guardado en el secreto `NTFY_ADMIN_TOPIC`. La web no ofrece suscripciones.
 
-| Tema | Quién lo conoce | Qué llega |
+| Qué llega | Cuándo | Para qué |
 |---|---|---|
-| `luzpreddict` (público) | Cualquiera: lo enlaza la página Alertas | El resumen de mañana: media, franja más barata y más cara, mejores horas y comparación con hoy |
-| Privado, de nombre aleatorio | Solo el autor (secreto `NTFY_ADMIN_TOPIC`) | Aviso con enlace a la ejecución si falla la tarea diaria, el reentrenamiento o una migración |
+| **Resumen de mañana:** media, franja más barata y más cara, mejores horas y comparación con hoy | Una vez al día, al llegar los precios de REE | Saber que la tarea diaria ha funcionado, y con qué resultado, sin abrir GitHub |
+| **Aviso de fallo**, con enlace a la ejecución | Si falla la tarea diaria, el reentrenamiento o una migración | Reaccionar a tiempo |
+
+Ejemplo del resumen, generado con los datos reales del 14 de octubre de 2026:
+
+```text
+Luz el jueves 15 de octubre: media 0,211 €/kWh
+Más barata: 14–16 h (0,061 €/kWh)
+Más cara: 20–22 h (0,357 €/kWh)
+Mejores horas: 14 h, 15 h, 16 h · Evita: 20 h, 21 h, 19 h
+Un 5 % más barata que el día anterior.
+Previsión de luzPreddict (LightGBM).
+```
 
 **Una vez al día como mucho.** El resumen se envía cuando la tarea recibe **por primera vez**
 los precios de mañana. Para saberlo, compara el último día con precio antes y después de la
@@ -70,8 +83,8 @@ sea el propio entorno de Python.
 | Nombre | Dónde | Para qué |
 |---|---|---|
 | `DATABASE_URL` | Secreto de GitHub y variable de Vercel | Cadena *pooled* de Neon (`postgresql+psycopg://…`) |
-| `NTFY_ADMIN_TOPIC` | Secreto de GitHub | Tema privado para los avisos de fallo |
-| `NTFY_TOPIC`, `SITE_URL` | `daily.yml` (no son secretos) | Tema público del resumen y web que se abre al tocar la notificación |
+| `NTFY_ADMIN_TOPIC` | Secreto de GitHub | Tema privado del desarrollador: resumen diario y avisos de fallo |
+| `NTFY_TOPIC`, `SITE_URL` | `daily.yml` | Tema al que va el resumen (el secreto anterior) y web que se abre al tocar la notificación |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Vercel | Límite de peticiones de la API |
 | `CORS_ORIGINS` | Vercel | Dominios que pueden llamar a la API desde un navegador |
 

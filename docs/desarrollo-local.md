@@ -36,7 +36,7 @@ Todas son opcionales salvo las de la base de datos; `.env.example` las documenta
 | `TEST_DATABASE_URL` | Base que vacían los tests: distinta de la anterior y terminada en `_test` |
 | `CORS_ORIGINS` | Orígenes que pueden llamar a la API desde un navegador |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Activan el límite de peticiones (sin ellas, desactivado) |
-| `NTFY_TOPIC`, `SITE_URL` | Solo para `daily --notify` |
+| `NTFY_TOPIC`, `SITE_URL` | Solo para `daily --notify`: tema privado de ntfy y web que se abre al tocar el aviso |
 | `REE_API_URL`, `HISTORY_START`, `TIMEZONE`… | Para cambiar la fuente o el periodo, raramente necesarias |
 
 ## Con Docker

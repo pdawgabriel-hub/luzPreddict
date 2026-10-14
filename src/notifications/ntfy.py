@@ -1,8 +1,9 @@
 """Envío de notificaciones a ntfy (https://ntfy.sh), sin cuentas.
 
-Un tema de ntfy es solo un nombre: quien lo conoce puede leerlo y publicar en él. El
-resumen diario va a un tema público (el que enlaza la web) y los avisos de fallo, a uno
-privado de nombre aleatorio (lo envían los workflows de GitHub con curl).
+Un tema de ntfy es solo un nombre: quien lo conoce puede leerlo y publicar en él. Por eso
+se usa un único tema privado, de nombre aleatorio, solo para el desarrollador: le llegan
+el resumen diario (señal de que la tarea ha funcionado) y los avisos de fallo, que envían
+los workflows de GitHub con curl.
 
 Se publica en JSON en lugar de con cabeceras, que no admiten bien las tildes del título.
 """

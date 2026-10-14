@@ -14,8 +14,8 @@ En GitHub Actions, `daily` y `train` dejan además un resumen en la página de l
 ejecución; `daily`, también su estado como salida del paso (`status`), para los pasos
 siguientes del workflow.
 
-Con `daily --notify`, la tarea envía el resumen de mañana al tema público de ntfy una
-sola vez al día: cuando llegan por primera vez los precios de REE o, si en el último
+Con `daily --notify`, la tarea envía el resumen de mañana al tema privado de ntfy del
+desarrollador una sola vez al día: cuando llegan por primera vez los precios de REE o, si en el último
 intento (`--last-attempt`) aún no han llegado, con la previsión.
 """
 
@@ -264,7 +264,7 @@ def daily_digest(session: Session, result: DailyResult, last_attempt: bool = Fal
 
 
 def send_digest(digest: Digest) -> str:
-    """Publica el resumen en el tema público de ntfy. Devuelve el id del mensaje."""
+    """Publica el resumen en el tema privado de ntfy. Devuelve el id del mensaje."""
     settings = get_settings()
     if not settings.ntfy_topic:
         raise ValueError("Falta NTFY_TOPIC: el tema de ntfy al que enviar el resumen")

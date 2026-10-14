@@ -5,12 +5,10 @@ import type { Prices } from '../api/types'
 import { PageHeader } from '../components/PageHeader'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { ErrorState, LoadingState } from '../components/States'
-import { NTFY_TOPIC, NTFY_TOPIC_URL } from '../config'
 import { useApi } from '../hooks/useApi'
 import { useNow } from '../hooks/useNow'
 import { addDays, madridDate } from '../lib/dates'
-import { buildDigest } from '../lib/digest'
-import { formatDay, formatKwh, madridHour } from '../lib/format'
+import { formatKwh, madridHour } from '../lib/format'
 import { MAX_ALERTS, history, loadAlerts, matchingHours, newAlertId, saveAlerts, type Alert, type Direction } from '../lib/localAlerts'
 import type { HourPrice } from '../lib/prices'
 import styles from './Alertas.module.css'
@@ -19,7 +17,7 @@ const MAX_THRESHOLD = 400 // €/MWh: 0,40 €/kWh
 const STEP = 5
 const DIRECTION_TEXT: Record<Direction, string> = { below: 'baje de', above: 'suba de' }
 
-type AlertsData = { target: Day; isTomorrow: boolean; past: HourPrice[]; previous: HourPrice[] }
+type AlertsData = { target: Day; isTomorrow: boolean; past: HourPrice[] }
 
 async function loadData(today: string, signal: AbortSignal): Promise<AlertsData | null> {
   const [tomorrow, past] = await Promise.all([
@@ -29,7 +27,7 @@ async function loadData(today: string, signal: AbortSignal): Promise<AlertsData 
   const todayHours = past.hours.filter((h) => h.datetime.startsWith(today))
   const target: Day | null = tomorrow ?? (todayHours.length ? { day: today, kind: 'published', hours: todayHours } : null)
   if (!target) return null
-  return { target, isTomorrow: tomorrow !== null, past: past.hours, previous: tomorrow ? todayHours : [] }
+  return { target, isTomorrow: tomorrow !== null, past: past.hours }
 }
 
 const hourList = (hours: HourPrice[], max = 6) =>
@@ -61,8 +59,8 @@ export default function Alertas() {
   return (
     <>
       <PageHeader eyebrow="Alertas" title="Avísame cuando la luz…">
-        Guarda un umbral y te decimos qué horas de mañana lo cumplen. Para recibir el aviso en el móvil, suscríbete al resumen diario
-        por ntfy: sin cuentas, sin correo y sin dejar tus datos.
+        Guarda un umbral y te decimos qué horas de mañana lo cumplen. Se guarda solo en tu navegador: sin cuentas, sin correo y sin
+        dejar tus datos.
       </PageHeader>
       {data.status === 'loading' && <LoadingState label="Cargando los precios…" />}
       {data.status === 'error' && <ErrorState error={data.error} onRetry={data.reload} />}
@@ -83,7 +81,6 @@ export default function Alertas() {
               onRemove={(id) => store(alerts.filter((a) => a.id !== id))}
             />
           </div>
-          <Ntfy data={data.data} />
         </>
       )}
     </>
@@ -218,62 +215,6 @@ function MyAlerts({ data, alerts, onToggle, onRemove }: { data: AlertsData; aler
       </ul>
       <p className={styles.hint}>
         Se guardan solo en este navegador: no hay cuentas y no se envían a ningún servidor. La web las comprueba cada vez que entras.
-      </p>
-    </section>
-  )
-}
-
-function Ntfy({ data }: { data: AlertsData }) {
-  const [copied, setCopied] = useState(false)
-  const digest = buildDigest(data.target.day, data.target.hours, { kind: data.target.kind, model: data.target.model }, data.previous)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(NTFY_TOPIC)
-      setCopied(true)
-    } catch {
-      setCopied(false)
-    }
-  }
-
-  return (
-    <section aria-labelledby="ntfy" className={`section ${styles.ntfy}`}>
-      <div>
-        <h2 id="ntfy">Resumen diario en el móvil</h2>
-        <p className="muted">
-          Cada tarde, cuando REE publica los precios de mañana, enviamos un resumen al tema público de{' '}
-          <a href="https://ntfy.sh">ntfy</a>, una app gratuita y de código abierto para recibir notificaciones.
-        </p>
-      </div>
-      <ol className={styles.steps}>
-        <li>
-          Instala ntfy en tu móvil (<a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy">Android</a> o{' '}
-          <a href="https://apps.apple.com/app/ntfy/id1625396347">iPhone</a>).
-        </li>
-        <li>
-          Suscríbete al tema <code className={styles.topic}>{NTFY_TOPIC}</code>{' '}
-          <button type="button" className={styles.copy} onClick={copy}>
-            {copied ? 'Copiado' : 'Copiar'}
-          </button>{' '}
-          o ábrelo en <a href={NTFY_TOPIC_URL}>{NTFY_TOPIC_URL.replace('https://', '')}</a>.
-        </li>
-        <li>Listo: no hace falta cuenta y no guardamos ningún dato tuyo.</li>
-      </ol>
-      <div>
-        <h3>Así te llegaría</h3>
-        <p className="muted">Con {data.target.kind === 'forecast' ? 'la previsión' : 'los precios'} del {formatDay(data.target.day)}.</p>
-      </div>
-      <article className={styles.notification} aria-label="Ejemplo de notificación">
-        <header>
-          <span>ntfy · {NTFY_TOPIC}</span>
-          <span>20:30</span>
-        </header>
-        <p className={styles.notificationTitle}>{digest.title}</p>
-        {digest.lines.map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-      </article>
-      <p className={styles.hint}>
-        El resumen es el mismo para todo el mundo. Tus alertas con umbral se comprueban aquí, en la web, cada vez que entras.
       </p>
     </section>
   )
