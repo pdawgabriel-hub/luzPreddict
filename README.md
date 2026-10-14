@@ -17,7 +17,7 @@
 
 **[Abrir la web](https://luzpreddict.vercel.app)** · **[Documentación de la API](https://luzpreddict.vercel.app/docs)** · **[Guía técnica](https://pdawgabriel-hub.github.io/luzPreddict/)**
 
-![Panel de luzPreddict](docs/img/capturas/panel.png)
+![Arquitectura de luzPreddict: GitHub Actions descarga de REE los precios y el mix, prevé y guarda en PostgreSQL (Neon); Vercel sirve la API y la web desde su CDN; ntfy avisa al desarrollador](docs/img/arquitectura.svg)
 
 ---
 
@@ -111,9 +111,7 @@ El proyecto está desplegado como servicio gratuito, pero la misma base permite 
 <a id="arquitectura"></a>
 ## Arquitectura
 
-![Arquitectura de luzPreddict](docs/img/arquitectura.svg)
-
-El sistema separa **lo pesado** (calcular) de **lo que se sirve** (web y API):
+El esquema del principio resume el sistema. Separa **lo pesado** (calcular) de **lo que se sirve** (web y API):
 
 1. **REE**, la fuente. La API pública de Red Eléctrica da el PVPC horario y el mix de
    generación, sin clave.
@@ -164,6 +162,10 @@ tablas de datos para lectores de pantalla y navegación con teclado) y funciona 
 
 <a id="capturas"></a>
 ## Capturas de pantalla
+
+| Panel |
+|---|
+| ![Panel](docs/img/capturas/panel.png) |
 
 | Histórico | Mercado |
 |---|---|

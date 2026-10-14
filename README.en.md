@@ -17,7 +17,7 @@
 
 **[Open the website](https://luzpreddict.vercel.app)** · **[API documentation](https://luzpreddict.vercel.app/docs)** · **[Technical guide (Spanish)](https://pdawgabriel-hub.github.io/luzPreddict/)**
 
-![luzPreddict dashboard](docs/img/capturas/panel.png)
+![luzPreddict architecture (labels in Spanish): GitHub Actions downloads prices and the generation mix from REE, forecasts and stores the results in PostgreSQL (Neon); Vercel serves the API and the website from its CDN; ntfy alerts the developer](docs/img/arquitectura.svg)
 
 ---
 
@@ -113,9 +113,7 @@ The project runs as a free service, but the same foundation supports several mod
 <a id="architecture"></a>
 ## Architecture
 
-![luzPreddict architecture (labels in Spanish)](docs/img/arquitectura.svg)
-
-The system separates **the heavy part** (computing) from **what is served** (website and API):
+The diagram at the top summarises the system. It separates **the heavy part** (computing) from **what is served** (website and API):
 
 1. **REE**, the source. Red Eléctrica's public API provides the hourly PVPC and the generation
    mix, with no key.
@@ -167,6 +165,10 @@ accessible (charts with data tables for screen readers, keyboard navigation) and
 
 <a id="screenshots"></a>
 ## Screenshots
+
+| Dashboard |
+|---|
+| ![Dashboard](docs/img/capturas/panel.png) |
 
 | History | Market |
 |---|---|
