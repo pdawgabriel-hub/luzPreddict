@@ -7,7 +7,7 @@ httpx2>=2.13  # cliente HTTP del TestClient de FastAPI (sucesor de httpx)
 
 # Calidad de código
 ruff>=0.6
-pre-commit>=3.7
+pre-commit>=4.7.0
 
 # Servidor local de la API
 uvicorn[standard]>=0.30
