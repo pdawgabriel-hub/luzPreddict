@@ -2,5 +2,5 @@
 # Mantenerlo ligero: nada de pandas ni librerías de ML aquí.
 fastapi>=0.115
 pydantic-settings>=2.7  # NoDecode para listas separadas por comas
-sqlalchemy>=2.0
+sqlalchemy>=2.1.4
 psycopg[binary]>=3.2
