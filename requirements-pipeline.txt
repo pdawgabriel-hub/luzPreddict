@@ -13,4 +13,4 @@ scikit-learn>=1.9.1
 lightgbm>=4.0
 
 # Migraciones de la base de datos
-alembic>=1.13
+alembic>=1.20.0
